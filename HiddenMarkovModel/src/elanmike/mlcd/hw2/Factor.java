@@ -158,7 +158,7 @@ public class Factor {
 		return valueNames;
 	}
 	public static String valueIndexToName(int variable, int var_value){
-		ArrayList<String> valueNames = new ArrayList<String>();
+//		ArrayList<String> valueNames = new ArrayList<String>();
 		return _variableValues.get(variable).get(var_value);
 	}
 	
@@ -647,7 +647,7 @@ public class Factor {
 		
 		for(int i = 0; i<result.data.size(); i++){
 			try {
-				ArrayList<Integer> variablesOfLarger = (ArrayList<Integer>) result._variables.clone();
+				ArrayList<Integer> variablesOfLarger = new ArrayList<Integer>(result._variables);
 				variablesOfLarger.addAll(heldVars);
 				ArrayList<Integer> varValues = result.valuesFromIndex(i);
 				varValues.addAll(heldValues);
@@ -746,7 +746,7 @@ public class Factor {
 		return result;
 	}	
 		
-	private void printData() {
+	protected void printData() {
 		for(int i = 0; i < data.size(); i++) {
 			System.out.print(Math.exp(data.get(i)));
 			System.out.print(", ");
