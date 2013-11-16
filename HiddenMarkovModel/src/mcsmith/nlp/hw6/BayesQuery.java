@@ -1,8 +1,9 @@
-package elanmike.mlcd.hw2;
+package mcsmith.nlp.hw6;
 
 import java.io.IOException;
 
-import elanmike.mlcd.hw2.Factor.FactorException;
+import mcsmith.nlp.hw6.Factor.FactorException;
+
 
 public class BayesQuery {
 

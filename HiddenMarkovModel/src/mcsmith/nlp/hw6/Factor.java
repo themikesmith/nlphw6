@@ -1,4 +1,4 @@
-package elanmike.mlcd.hw2;
+package mcsmith.nlp.hw6;
 
 import java.util.ArrayList;
 import java.util.Collections;

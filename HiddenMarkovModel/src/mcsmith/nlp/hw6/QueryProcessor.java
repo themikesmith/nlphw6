@@ -1,4 +1,4 @@
-package elanmike.mlcd.hw2;
+package mcsmith.nlp.hw6;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -7,8 +7,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import elanmike.mlcd.hw2.Factor.FactorException;
-import elanmike.mlcd.hw2.Factor.FactorIndexException;
+import mcsmith.nlp.hw6.Factor.FactorException;
+import mcsmith.nlp.hw6.Factor.FactorIndexException;
+
 
 public class QueryProcessor {
 	public static final int NO_EVIDENCE = -1;

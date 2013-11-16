@@ -1,4 +1,4 @@
-package elanmike.mlcd.hw2;
+package mcsmith.nlp.hw6;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -18,8 +18,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import elanmike.mlcd.hw2.Factor.FactorException;
-import elanmike.mlcd.hw2.Factor.FactorIndexException;
+import mcsmith.nlp.hw6.Factor.FactorException;
+import mcsmith.nlp.hw6.Factor.FactorIndexException;
+
 
 /**
  * Belief Update Message Passing class
