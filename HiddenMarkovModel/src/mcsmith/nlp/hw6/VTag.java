@@ -2,6 +2,8 @@ package mcsmith.nlp.hw6;
 
 import java.io.IOException;
 
+import mcsmith.nlp.hw6.TagDict.SMOOTHING;
+
 public class VTag {
 	/**
 	 * Prints an example of proper usage of the program
@@ -47,6 +49,8 @@ public class VTag {
 		// now that we have our arguments...
 		ViterbiTagger vtag = new ViterbiTagger();
 		vtag.setDebugMode(debugMode);
+		TagDict.setDebugMode(debugMode);
+		vtag.getTagDict().setSmoother(SMOOTHING.oneCountSmoothing);
 		try {
 			vtag.train(args[0]);
 		} catch (IOException e) {
@@ -63,3 +67,4 @@ public class VTag {
 		}
 	}
 }
+

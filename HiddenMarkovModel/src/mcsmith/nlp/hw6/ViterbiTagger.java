@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import mcsmith.nlp.hw6.TagDict.SMOOTHING;
+
 public class ViterbiTagger {
 	public static final String WORD_TAG_DELIMITER = "/";
 	private boolean debugMode;
@@ -51,6 +53,7 @@ public class ViterbiTagger {
 		debugMode = false;
 		viterbiBackpointers = new HashMap<String, Integer>();
 		backwardValues = new HashMap<String, Probability>();
+//		td.setSmoother(SMOOTHING.oneCountSmoothing);
 	}
 	/**
 	 * Assembles our training counts from the trainin file.
@@ -58,7 +61,7 @@ public class ViterbiTagger {
 	 * @throws IOException
 	 */
 	public void train(String trainFilename) throws IOException {
-		if(debugMode) System.out.println("reading network file from:"+trainFilename);
+		if(debugMode) System.out.println("reading training file from:"+trainFilename);
 		BufferedReader br = new BufferedReader(new FileReader(trainFilename));
 		String line;
 		int prevTagKey = -1;
@@ -81,10 +84,17 @@ public class ViterbiTagger {
 			String word = wordTag[0], tag = wordTag[1];
 			if(debugMode) System.out.println(": "+line);
 			// ensure we have these in our tag dictionary
-			td.addWordToDict(word);
 			td.addTagToDict(tag);
+			td.increaseVocab(word);
 			// and increment the appropriate counts
 			int tagKey = td.getKeyFromTag(tag), wordKey = td.getKeyFromWord(word);
+			if(debugMode) System.out.printf("word:%s tag:%s prevTag:%s\n", word, tag, td.getTagFromKey(prevTagKey));
+			if(prevTagKey == -1) {
+				if(debugMode) System.out.println("skipping first line.");
+				prevTagKey = tagKey;
+				continue;
+			}
+			td.incrementCountOfWord(word);
 			td.incrementNumberTagTokens();
 			td.incrementNumberTaggedWordTokens();
 			td.incrementTimesSeenTagContext(tagKey);
@@ -94,7 +104,7 @@ public class ViterbiTagger {
 			}
 			prevTagKey = tagKey;
 		}
-		td.decrementBoundaryContextCount(); // correct our counts for the ### context.
+//		td.decrementBoundaryContextCount(); // correct our counts for the ### context.
 		if(debugMode) System.out.println("number word tag tokens:"+td.getNumberWordTagTokens());
 		br.close();
 	}
@@ -104,11 +114,24 @@ public class ViterbiTagger {
 		ArrayList<String> testData = new ArrayList<String>();
 		String line;
 		while ((line = br.readLine()) != null) {
-			//TODO is this all?
+			// TODO is this all?
+			// TODO add in adding to vocabulary size
+			// read line
+			String[] wordTag = line.split(WORD_TAG_DELIMITER);
+			if (wordTag.length != 2) {
+				br.close();
+				throw new IOException("error! unable to parse line:" + line);
+			}
+			// process line. - increase vocab size if necessary
+			String word = wordTag[0];
+			if (debugMode) System.out.println(": " + line);
+			td.increaseVocab(word);
 			// read test data into memory
 			testData.add(line);
 		}
 		br.close();
+		td.increaseVocabForOOV();
+		if(debugMode) System.out.println("vocab size:"+td.getVocabSize());
 		return testData;
 	}
 	public void test(String testFilename, boolean useSumProduct) throws IOException {
@@ -116,6 +139,10 @@ public class ViterbiTagger {
 		// we have read the test data into memory now.
 		// initialize at 0 for max
 		initializeForward(testData);
+		if(debugMode) {
+			System.out.println("\nafter init!\n");
+			printData(testData, forwardValues);
+		}
 		runPass(testData, true, useSumProduct);
 		if(debugMode) {
 			System.out.println("\nafter forward pass!\n");
@@ -164,11 +191,13 @@ public class ViterbiTagger {
 		// for all datum in test:
 		for (int i = 1; i < testData.size(); i++) {
 			String datum = testData.get(i);
+			if(debugMode) System.out.printf("i:%d data:%s\n", i, datum);
 			String[] split = datum.split(WORD_TAG_DELIMITER);
 			String word = split[0];
 			int wordKey = td.getKeyFromWord(word);
 			// for each possible tag of this datum, we have one state.
 			for(int possibleTag : td.getTagDictForWord(wordKey)) {
+				if(debugMode) System.out.printf("possible tag:%d aka %s word:%s\n", possibleTag, td.getTagFromKey(possibleTag), word);
 				String stateKey = TagDict.makeKey(possibleTag, i);
 				// initialize all states with value specified
 				forwardValues.put(stateKey, new Probability(0));
@@ -224,8 +253,8 @@ public class ViterbiTagger {
 				// for each possible tag of the previous datum...
 				for(int prevPossibleTag : td.getTagDictForWord(prevWordKey)) {
 					// arc prob = p(tag | prev tag) * p(word | tag)
-					Probability arcProb = td.getProbTagGivenPrevTag(possibleTag, prevPossibleTag);
-					arcProb = arcProb.product(td.getProbWordGivenTag(wordKey, possibleTag));
+					Probability arcProb = td.getBackoffProbTagGivenPrevTag(possibleTag, prevPossibleTag);
+					arcProb = arcProb.product(td.getBackoffProbWordGivenTag(wordKey, possibleTag));
 					// mu = mu t-1 (i-1) * arc prob
 					Probability prevBest = stateValues.get(TagDict.makeKey(prevPossibleTag, i-1));
 					Probability mu = prevBest.product(arcProb);
@@ -263,6 +292,7 @@ public class ViterbiTagger {
 		int currTag = td.getKeyFromTag(TagDict.SENTENCE_BOUNDARY);
 		// from n down to 1 (note n = size - 1)
 		int n = testData.size() - 1;
+		if(debugMode) System.out.println("n:"+n);
 		for (int i = n; i > 0; i--) {
 			// get our previous tag
 			int prevTag = backpointers.get(TagDict.makeKey(currTag, i));
@@ -301,6 +331,7 @@ public class ViterbiTagger {
 			// and continue following
 			currTag = prevTag;
 		}
+		if(debugMode) System.out.println("num ###:"+numberSentenceBoundaries);
 		// now that we've got all our counts, compute the accuracy scores
 		// don't count the sentence boundaries when we score
 		double overallAccuracy = totalCorrectTags / (n-numberSentenceBoundaries), 
@@ -324,7 +355,7 @@ public class ViterbiTagger {
 				"novel: %.4f%%)\n"
 					+"Perplexity per Viterbi-tagged test word: %.4f\n",
 					overallAccuracy, knownAccuracy, novelAccuracy, 
-					getPerplexityPerTaggedWord(finalProb, testData.size() - numberSentenceBoundaries));
+					getPerplexityPerTaggedWord(finalProb, n));
 		return result;
 	}
 	/**
@@ -340,4 +371,15 @@ public class ViterbiTagger {
 	}
 	public TagDict getTagDict() {return td;}
 	public void setDebugMode(boolean b) {debugMode = b;}
+	public static void main(String[] args) {
+		ViterbiTagger vtag = new ViterbiTagger();
+		vtag.setDebugMode(true);
+		try {
+			vtag.train(args[0]);
+		} catch (IOException e) {
+			System.err.println("error training!\n");
+			e.printStackTrace();
+		}
+		System.out.println(vtag.getTagDict().toString());
+	}
 }

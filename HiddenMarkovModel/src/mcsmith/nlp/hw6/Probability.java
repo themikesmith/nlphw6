@@ -6,9 +6,12 @@ public class Probability {
 		logprob = Math.log(prob);
 	}
 	public Probability(double prob, boolean inLogSpace) {
-		if(!inLogSpace)
+		if(!inLogSpace) {
 			logprob = Math.log(prob);
-		else logprob = prob;
+		}
+		else {
+			logprob = prob;
+		}
 	}
 	public Probability(int prob) {
 		logprob = Math.log(new Double(prob));
@@ -50,13 +53,13 @@ public class Probability {
 	 * @param other
 	 * @return the sum of this and another
 	 */
-	public Probability logAdd(Probability other) {
+	public Probability add(Probability other) {
 		// this is x, other is y
 		double value;
 		if(this.logprob == Double.NEGATIVE_INFINITY
 				&& other.logprob == Double.NEGATIVE_INFINITY) {
 			// if both x and y are -inf (0)
-			value = Math.log(1);
+			value = Double.NEGATIVE_INFINITY;
 		}
 		else if(this.logprob == Double.NEGATIVE_INFINITY) {
 			// if x is -inf, y is not -> y + log(1 + exp(x-y)
@@ -86,15 +89,25 @@ public class Probability {
 	}
 	public static void main(String[] args) {
 		Probability three = new Probability(3), four = new Probability(4), 
-				tenth = new Probability(0.1);
-		System.out.println("3+4 = "+three.logAdd(four));
+				tenth = new Probability(0.1), zero = new Probability(0), zeroA = new Probability(0);
+		System.out.println("3+4 = "+three.add(four));
 		System.out.println("3x4 = "+three.product(four));
 		System.out.println("3/4 = "+three.divide(four));
 		System.out.println("max of 3 and 4 = "+three.max(four));
 		
-		System.out.println("3+0.1 = "+three.logAdd(tenth));
+		System.out.println("3+0.1 = "+three.add(tenth));
 		System.out.println("3x0.1 = "+three.product(tenth));
 		System.out.println("3/0.1 = "+three.divide(tenth));
 		System.out.println("max of 3 and 0.1 = "+three.max(tenth));
+		
+		System.out.println("0+0 = "+zero.add(zeroA));
+		System.out.println("0x0 = "+zero.product(zeroA));
+		System.out.println("0/0 = "+zero.divide(zeroA));
+		System.out.println("max of 0 and 0 = "+zero.max(zeroA));
+		
+		System.out.println("3+0 = "+three.add(zero));
+		System.out.println("3x0 = "+three.product(zero));
+		System.out.println("3/0 = "+three.divide(zero));
+		System.out.println("max of 3 and 0 = "+three.max(zero));
 	}
 }
