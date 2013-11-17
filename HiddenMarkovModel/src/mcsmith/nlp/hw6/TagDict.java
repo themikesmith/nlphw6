@@ -127,11 +127,14 @@ public class TagDict {
 	/**
 	 * Get the tag dictionary for a given word
 	 * @param word
-	 * @return the list of tags, or null if tag is not in dictionary
+	 * @return the list of specific tags if word is known, or list of all tags if unknown
 	 */
 	public List<Integer> getTagDictForWord(int word) {
 		String key = makeKey(word);
-		return wordTagDictionary.get(key);
+		if(wordTagDictionary.containsKey(key))
+			return wordTagDictionary.get(key);
+		else
+			return new ArrayList<Integer>(intsToTags.keySet());
 	}
 	
 	/**
