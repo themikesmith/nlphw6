@@ -82,15 +82,15 @@ public class ViterbiTagger {
 			}
 			// process line.
 			String word = wordTag[0], tag = wordTag[1];
-			if(debugMode) System.out.println(": "+line);
+//			if(debugMode) System.out.println(": "+line);
 			// ensure we have these in our tag dictionary
 			td.addTagToDict(tag);
 			td.increaseVocab(word);
 			// and increment the appropriate counts
 			int tagKey = td.getKeyFromTag(tag), wordKey = td.getKeyFromWord(word);
-			if(debugMode) System.out.printf("word:%s tag:%s prevTag:%s\n", word, tag, td.getTagFromKey(prevTagKey));
+//			if(debugMode) System.out.printf("word:%s tag:%s prevTag:%s\n", word, tag, td.getTagFromKey(prevTagKey));
 			if(prevTagKey == -1) {
-				if(debugMode) System.out.println("skipping first line.");
+//				if(debugMode) System.out.println("skipping first line.");
 				prevTagKey = tagKey;
 				continue;
 			}
@@ -139,10 +139,6 @@ public class ViterbiTagger {
 		// we have read the test data into memory now.
 		// initialize at 0 for max
 		initializeForward(testData);
-		if(debugMode) {
-			System.out.println("\nafter init!\n");
-			printData(testData, forwardValues);
-		}
 		runPass(testData, true, useSumProduct);
 		if(debugMode) {
 			System.out.println("\nafter forward pass!\n");

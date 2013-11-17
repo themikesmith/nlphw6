@@ -49,7 +49,7 @@ public class VTag {
 		// now that we have our arguments...
 		ViterbiTagger vtag = new ViterbiTagger();
 		vtag.setDebugMode(debugMode);
-		TagDict.setDebugMode(debugMode);
+//		TagDict.setDebugMode(debugMode);
 		vtag.getTagDict().setSmoother(SMOOTHING.oneCountSmoothing);
 		try {
 			vtag.train(args[0]);
