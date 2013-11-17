@@ -60,7 +60,10 @@ public class VTag {
 		// debug train!
 		if(debugMode) System.out.println(vtag.getTagDict().toString());
 		try {
-			vtag.test(args[1], useSumProduct);
+			// viterbi
+			vtag.test(args[1], false);
+			// forward backward
+			vtag.test(args[1], true);
 		} catch (IOException e) {
 			System.err.println("error testing!\n");
 			e.printStackTrace();

@@ -33,7 +33,7 @@ public class ViterbiTagger {
 	 * 
 	 * Backpointer (tag, time) -> previous best tag
 	 */
-	private Map<String, Integer> viterbiBackpointers;
+	private Map<String, Integer> backpointers;
 	/**
 	 * Stores our state beta / mu values - backward pass.
 	 * 
@@ -51,7 +51,7 @@ public class ViterbiTagger {
 		forwardValues = new HashMap<String, Probability>();
 		td = new TagDict();
 		debugMode = false;
-		viterbiBackpointers = new HashMap<String, Integer>();
+		backpointers = new HashMap<String, Integer>();
 		backwardValues = new HashMap<String, Probability>();
 //		td.setSmoother(SMOOTHING.oneCountSmoothing);
 	}
@@ -137,20 +137,49 @@ public class ViterbiTagger {
 	public void test(String testFilename, boolean useSumProduct) throws IOException {
 		ArrayList<String> testData = readTestData(testFilename);
 		// we have read the test data into memory now.
-		// initialize at 0 for max
-		initializeForward(testData);
-		runPass(testData, true, useSumProduct);
-		if(debugMode) {
-			System.out.println("\nafter forward pass!\n");
-			printData(testData, forwardValues);
+		if(!useSumProduct) {
+			// we use backpointers to store the tag with the max probability at each step
+			backpointers.clear();
+			// viterbi
+			initializeForward(testData);
+			runPass(testData, true, useSumProduct);
+			if(debugMode) {
+				System.out.println("\nafter forward pass!\n");
+				printData(testData, forwardValues);
+			}
+			// follow back pointers and compare to our given test data
+			int[] result = getCompareResultFromBackpointers(testData, backpointers);
+			if(debugMode) {
+				System.out.printf("viterbi produced this tagging!\n");
+				for (int i = 2; i < result.length; i++) {
+					System.out.printf("i:%d tag:%s\n", i - 1,
+							td.getTagFromKey(result[i]));
+				}
+			}
 		}
-		// follow back pointers and compare to our given test data
-		int[] result = getCompareResultFromBackpointers(testData, viterbiBackpointers);
-		if(debugMode) {
-			System.out.printf("viterbi produced this tagging!\n");
-			for (int i = 2; i < result.length; i++) {
-				System.out.printf("i:%d tag:%s\n", i - 1,
-						td.getTagFromKey(result[i]));
+		else {
+			// we use backpointers to store the tag with the highest posterior probability at each step
+			backpointers.clear();
+			// forward backward - forward pass
+			initializeForward(testData);
+			runPass(testData, true, useSumProduct);
+			if(debugMode) {
+				System.out.println("\nafter forward pass!\n");
+				printData(testData, forwardValues);
+			}
+			String endKey = TagDict.makeKey(td.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);
+			Probability S = forwardValues.get(endKey);
+			if(debugMode) System.out.println("S:"+S);
+			// backward pass
+			initializeBackward(testData);
+			if(debugMode) {
+				System.out.println("\nafter backward init!\n");
+				printData(testData, backwardValues);
+			}
+			runPass(testData, false, useSumProduct);
+			if(debugMode) {
+				System.out.println("\nafter backward pass!\n");
+				printData(testData, backwardValues);
 			}
 		}
 	}
@@ -212,7 +241,7 @@ public class ViterbiTagger {
 		backwardValues.put(endKey, new Probability(1));
 		// ... and all other states at value specified
 		// for all datum in test:
-		for (int i = testData.size() - 1; i > 0; i--) {
+		for (int i = testData.size() - 2; i >= 0; i--) {
 			String datum = testData.get(i);
 			String[] split = datum.split(WORD_TAG_DELIMITER);
 			String word = split[0];
@@ -232,39 +261,112 @@ public class ViterbiTagger {
 	 * @param useSumProduct true if sum product, false if max product
 	 */
 	private void runPass(List<String> testData, boolean forward, boolean useSumProduct) {
+		if(forward) runForwardPass(testData, useSumProduct);
+		else runBackwardPass(testData, useSumProduct);
+	}
+	private void runForwardPass(List<String> testData, boolean useSumProduct) {
 		// for int i = 1 to n (ranges over all test data(
 		// key = tag,time
-		Map<String, Probability> stateValues;
-		if(forward) stateValues = forwardValues;
-		else stateValues = backwardValues;
+		Map<String, Probability> stateValues = forwardValues;
 		// for all datum in test:
+		boolean printedDot = false;
 		for (int i = 1; i < testData.size(); i++) {
+			if(i % 1000 == 0) {
+				System.err.print(".");
+				printedDot = true;
+			}
 			String datum = testData.get(i), prevDatum = testData.get(i-1);
 			String[] split = datum.split(WORD_TAG_DELIMITER), prevSplit = prevDatum.split(WORD_TAG_DELIMITER);
 			String word = split[0], prevWord = prevSplit[0];
 			int wordKey = td.getKeyFromWord(word), prevWordKey = td.getKeyFromWord(prevWord);
 			// for each possible tag of this datum, we have one state.
 			for(int possibleTag : td.getTagDictForWord(wordKey)) {
-				String stateKey = TagDict.makeKey(possibleTag, i);
+				String currentKey = TagDict.makeKey(possibleTag, i);
 				// for each possible tag of the previous datum...
 				for(int prevPossibleTag : td.getTagDictForWord(prevWordKey)) {
-					// arc prob = p(tag | prev tag) * p(word | tag)
+					// p = arc prob = p(tag | prev tag) * p(word | tag)
 					Probability arcProb = td.getBackoffProbTagGivenPrevTag(possibleTag, prevPossibleTag);
 					arcProb = arcProb.product(td.getBackoffProbWordGivenTag(wordKey, possibleTag));
-					// mu = mu t-1 (i-1) * arc prob
-					Probability prevBest = stateValues.get(TagDict.makeKey(prevPossibleTag, i-1));
-					Probability mu = prevBest.product(arcProb);
-					// get current best and compare
-					Probability currentBest = stateValues.get(stateKey);
-					if(mu.getLogProb() > currentBest.getLogProb()) {
-						// we have a new max!
-						stateValues.put(stateKey, mu);
-						// and store back pointer
-						viterbiBackpointers.put(stateKey, prevPossibleTag);
+					if(useSumProduct) {
+						// alpha[t][i] = alpha[t][i] + (alpha[t-1][i-1] * arc prob
+						String prevKey = TagDict.makeKey(prevPossibleTag, i-1);
+						Probability prevAlpha = stateValues.get(prevKey);
+						Probability summand = prevAlpha.product(arcProb);
+						// get current value
+						Probability currentAlpha = stateValues.get(currentKey);
+						// and add values
+						stateValues.put(currentKey, currentAlpha.add(summand));
+					}
+					else {
+						// mu = mu t-1 (i-1) * arc prob
+						Probability prevBest = stateValues.get(TagDict.makeKey(prevPossibleTag, i-1));
+						Probability mu = prevBest.product(arcProb);
+						// get current best and compare
+						Probability currentBest = stateValues.get(currentKey);
+						if(mu.getLogProb() > currentBest.getLogProb()) {
+							// we have a new max!
+							stateValues.put(currentKey, mu);
+							// and store back pointer
+							backpointers.put(currentKey, prevPossibleTag);
+						}
 					}
 				}
 			}
-		}  
+		}
+		if(printedDot) System.err.println();
+	}
+	private void runBackwardPass(List<String> testData, boolean useSumProduct) {
+		// for int i = 1 to n (ranges over all test data(
+		// key = tag,time
+		// for all datum in test:
+		boolean printedDot = false;
+		for (int i = testData.size() - 1; i > 0; i--) {
+			if(i % 1000 == 0) {
+				System.err.print(".");
+				printedDot = true;
+			}
+			String datum = testData.get(i), prevDatum = testData.get(i-1);
+			String[] split = datum.split(WORD_TAG_DELIMITER), prevSplit = prevDatum.split(WORD_TAG_DELIMITER);
+			String word = split[0], prevWord = prevSplit[0];
+			int wordKey = td.getKeyFromWord(word), prevWordKey = td.getKeyFromWord(prevWord);
+			// for each possible tag of this datum, we have one state.
+			for(int possibleTag : td.getTagDictForWord(wordKey)) {
+				String currentKey = TagDict.makeKey(possibleTag, i);
+				// ... we can compute unigram probability p(t i | w)
+				// = alpha (t, i) * beta (t,i) * S
+				Probability alphaTI = forwardValues.get(currentKey);
+				Probability betaTI = backwardValues.get(currentKey);
+				String endKey = TagDict.makeKey(td.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);
+				Probability S = forwardValues.get(endKey);
+				Probability pUnigram = alphaTI.product(betaTI).product(S);
+				// for each possible tag of the previous datum...
+				for(int prevPossibleTag : td.getTagDictForWord(prevWordKey)) {
+					// p = arc prob = p(tag | prev tag) * p(word | tag)
+					Probability arcProb = td.getBackoffProbTagGivenPrevTag(possibleTag, prevPossibleTag);
+					arcProb = arcProb.product(td.getBackoffProbWordGivenTag(wordKey, possibleTag));
+					if(useSumProduct) {
+						// beta[t-1][i-1] = beta[t-1][i-1] + beta[t][i] * arc prob
+						String prevKey = TagDict.makeKey(prevPossibleTag, i-1);
+						Probability prevValue = backwardValues.get(prevKey);
+						// get current value
+						Probability currentValue = backwardValues.get(currentKey);
+						Probability summand = currentValue.product(arcProb);
+						// and add values
+						backwardValues.put(prevKey, prevValue.add(summand));
+						// ... now we can compute bigram probability p( [t-1, i-1] ^ t i | w)
+						// = alpha (t-1, i-1) * p * beta (t,i) / S
+						Probability prevAlpha = forwardValues.get(prevKey);
+						Probability pBigram = prevAlpha.product(betaTI).product(arcProb).divide(S);
+						//TODO find the tag with the greatest posterior value
+						// we want p([t-1, i-1] | [t i], w )
+					}
+					else {
+						System.err.println("don't run viterbi backwards!");
+					}
+				}
+			}
+		}
+		if(printedDot) System.err.println();
 	}
 	/**
 	 * Given the test data length, and the backpointers map,
