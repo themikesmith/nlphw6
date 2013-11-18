@@ -134,58 +134,98 @@ public class ViterbiTagger {
 		if(debugMode) System.out.println("vocab size:"+TagDict.getVocabSize());
 		return testData;
 	}
-	public void test(String testFilename, boolean useSumProduct) throws IOException {
-		ArrayList<String> testData = readTestData(tdTest, testFilename);
-//		readTestData(tdRaw, testFilename);
-		// we have read the test data into memory now.
-		if(!useSumProduct) {
-			// we use backpointers to store the tag with the max probability at each step
-			backpointers.clear();
-			// viterbi
-			initializeForward(testData);
-			runPass(testData, true, useSumProduct);
-			if(debugMode) {
-				System.out.println("\nafter forward pass!\n");
-				printData(testData, forwardValues);
+	private ArrayList<String> readRawData(TagDict td, String testFilename) throws IOException {
+		if(debugMode) System.out.println("reading test file from:"+testFilename);
+		BufferedReader br = new BufferedReader(new FileReader(testFilename));
+		ArrayList<String> testData = new ArrayList<String>();
+		String line;
+		while ((line = br.readLine()) != null) {
+			// TODO is this all?
+			// TODO add in adding to vocabulary size
+			// read line
+			String[] wordTag = line.split(WORD_TAG_DELIMITER);
+			if (wordTag.length == 1) {
+				// good. no tags should be found
+				// process line. - increase vocab size if necessary
+				String word = wordTag[0];
+				if (debugMode) System.out.println(": " + line);
+				TagDict.addWordToDict(word);
+				td.initWordCounter(word);
+				// read test data into memory
+				testData.add(line);
 			}
-			// follow back pointers and compare to our given test data
-			int[] result = getCompareResultFromBackpointers(testData, useSumProduct, backpointers);
-			if(debugMode) {
-				System.out.printf("viterbi produced this tagging!\n");
-				for (int i = 2; i < result.length; i++) {
-					System.out.printf("i:%d tag:%s\n", i - 1,
-							TagDict.getTagFromKey(result[i]));
-				}
+			else {
+				br.close();
+				throw new IOException("error! unable to parse line:" + line);
+			}
+			
+		}
+		br.close();
+		if(debugMode) System.out.println("vocab size:"+TagDict.getVocabSize());
+		return testData;
+	}
+	private void testViterbi(ArrayList<String> testData) {
+		// we use backpointers to store the tag with the max probability at each step
+		backpointers.clear();
+		// viterbi
+		initializeForward(testData);
+		runPass(testData, true, false);
+		if (debugMode) {
+			System.out.println("\nafter forward pass!\n");
+			printData(testData, forwardValues);
+		}
+		// follow back pointers and compare to our given test data
+		int[] result = getCompareResultFromBackpointers(testData, false, backpointers);
+		if (debugMode) {
+			System.out.printf("viterbi produced this tagging!\n");
+			for (int i = 2; i < result.length; i++) {
+				System.out.printf("i:%d tag:%s\n", i - 1,
+						TagDict.getTagFromKey(result[i]));
 			}
 		}
+	}
+
+	private void runIterationEM(ArrayList<String> testData, ArrayList<String> rawData) {
+		// we use backpointers to store the tag with the highest posterior
+		// probability at each step
+		backpointers.clear();
+		// forward backward - forward pass
+		initializeForward(testData);
+		runPass(testData, true, true);
+		if (debugMode) {
+			System.out.println("\nafter forward pass!\n");
+			printData(testData, forwardValues);
+		}
+		String endKey = TagDict.makeKey(
+				TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY),
+				testData.size() - 1);
+		Probability S = forwardValues.get(endKey);
+		if (debugMode)
+			System.out.println("S:" + S);
+		// backward pass
+		initializeBackward(testData);
+		runPass(testData, false, true);
+		if (debugMode) {
+			System.out.println("\nafter backward pass!\n");
+			printData(testData, backwardValues);
+		}
+		int[] result = getCompareResultFromBackpointers(testData, true, backpointers);
+		if (debugMode) {
+			System.out.printf("forward-backward produced this tagging!\n");
+			for (int i = 2; i < result.length; i++) {
+				System.out.printf("i:%d tag:%s\n", i - 1,
+						TagDict.getTagFromKey(result[i]));
+			}
+		}
+	}
+	public void test(String testFilename, boolean useSumProduct) throws IOException {
+		ArrayList<String> testData = readTestData(tdTest, testFilename);
+		if(!useSumProduct) {
+			testViterbi(testData);
+		}
 		else {
-			// we use backpointers to store the tag with the highest posterior probability at each step
-			backpointers.clear();
-			// forward backward - forward pass
-			initializeForward(testData);
-			runPass(testData, true, useSumProduct);
-			if(debugMode) {
-				System.out.println("\nafter forward pass!\n");
-				printData(testData, forwardValues);
-			}
-			String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);
-			Probability S = forwardValues.get(endKey);
-			if(debugMode) System.out.println("S:"+S);
-			// backward pass
-			initializeBackward(testData);
-			runPass(testData, false, useSumProduct);
-			if(debugMode) {
-				System.out.println("\nafter backward pass!\n");
-				printData(testData, backwardValues);
-			}
-			int[] result = getCompareResultFromBackpointers(testData, useSumProduct, backpointers);
-			if(debugMode) {
-				System.out.printf("forward-backward produced this tagging!\n");
-				for (int i = 2; i < result.length; i++) {
-					System.out.printf("i:%d tag:%s\n", i - 1,
-							TagDict.getTagFromKey(result[i]));
-				}
-			}
+			ArrayList<String> rawData = readRawData(tdRaw, testFilename);
+			runIterationEM(testData, rawData);
 		}
 	}
 

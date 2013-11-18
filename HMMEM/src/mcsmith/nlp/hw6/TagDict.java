@@ -204,6 +204,8 @@ public class TagDict {
 	 * Stores number of tag tokens
 	 */
 	private int numberTagTokens;
+	private int numberTagTokensCurrent;
+	private int numberTagTokensNew;
 	/**
 	 * Table used for transmission probabilities.  Shares parameters across time steps.
 	 * Used for computing p(tag | prev tag) = p(tag, prev tag) / p(prev tag)
@@ -217,6 +219,8 @@ public class TagDict {
 	 * and as values the number of times we observed the first tag to follow the second.
 	 */
 	private Map<String, Integer> countTagPrevTag;
+	private Map<String, Integer> countTagPrevTagCurrent;
+	private Map<String, Integer> countTagPrevTagNew;
 	/**
 	 * Table used for transmission probabilities.  Shares parameters across time steps.
 	 * Used for computing p(tag | prev tag) = p(tag, prev tag) / p(prev tag)
@@ -229,6 +233,8 @@ public class TagDict {
 	 * and as values the number of times we observed the first tag to follow the second.
 	 */
 	private Map<String, Integer> countPrevTag;
+	private Map<String, Integer> countPrevTagCurrent;
+	private Map<String, Integer> countPrevTagNew;
 	/**
 	 * Count used for emission probabilities.  Shares parameters across time steps.
 	 * 
@@ -240,6 +246,8 @@ public class TagDict {
 	 * Stores number of word tag tokens
 	 */
 	private int numberWordTagTokens;
+	private int numberWordTagTokensCurrent;
+	private int numberWordTagTokensNew;
 	/**
 	 * Table used for emission probabilities.  Shares parameters across time steps.
 	 * 
@@ -253,6 +261,8 @@ public class TagDict {
 	 * and as values the number of times we observed the word to receive the tag.
 	 */
 	private Map<String, Integer> countWordTag;
+	private Map<String, Integer> countWordTagCurrent;
+	private Map<String, Integer> countWordTagNew;
 	/**
 	 * Table used for backed off emission probabilities.  Shares parameters across time steps.
 	 * 
@@ -263,6 +273,8 @@ public class TagDict {
 	 * and as values the number of times we observed the word.
 	 */
 	private Map<String, Integer> countWord;
+	private Map<String, Integer> countWordCurrent;
+	private Map<String, Integer> countWordNew;
 	/**
 	 * Counts the number of singleton tag types for each prev tag
 	 * stores the number of tag types t such that count(t, t-1) = 1
@@ -284,15 +296,26 @@ public class TagDict {
 	 */
 	public TagDict() {
 		numberTagTokens = 0;
+		numberTagTokensCurrent = 0;
+		numberTagTokensNew = 0;
 		countTagPrevTag = new HashMap<String, Integer>();
+		countTagPrevTagCurrent = new HashMap<String, Integer>();
+		countTagPrevTagNew = new HashMap<String, Integer>();
 		countSingletonTagPrevTag = new HashMap<String, Integer>();
 		countSingletonWordTags = new HashMap<String, Integer>();
 		countPrevTag = new HashMap<String, Integer>();
+		countPrevTagCurrent = new HashMap<String, Integer>();
+		countPrevTagNew = new HashMap<String, Integer>();
 		numberWordTagTokens = 0;
+		numberWordTagTokensCurrent = 0;
+		numberWordTagTokensNew = 0;
 		countWordTag = new HashMap<String, Integer>();
+		countWordTagCurrent = new HashMap<String, Integer>();
+		countWordTagNew = new HashMap<String, Integer>();
 		countWord = new HashMap<String, Integer>();
+		countWordCurrent = new HashMap<String, Integer>();
+		countWordNew = new HashMap<String, Integer>();
 		wordTagDictionary = new HashMap<String, ArrayList<Integer> >();
-//		incrementCountOfWord(SENTENCE_BOUNDARY);
 		smoother = SMOOTHING.none;
 	}
 	public void setSmoother(SMOOTHING sm) {

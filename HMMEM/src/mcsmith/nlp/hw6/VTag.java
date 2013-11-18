@@ -9,25 +9,26 @@ public class VTag {
 	 * Prints an example of proper usage of the program
 	 */
 	private static void usage(String[] args) {
-		System.err.println("usage: requires 2 arguments.\n" +
+		System.err.println("usage: requires 3 arguments.\n" +
 				"arg[0] = training_file\n" +
 				"arg[1] = test_file\n" +
-				"Defaults to off, but one may specify an optional 3rd argument:\n" +
-				" arg[2] = -d to enable debug mode.");
+				"arg[2] = raw_file\n" +
+				"Defaults to off, but one may specify an optional 4th argument:\n" +
+				" arg[3] = -d to enable debug mode.");
 		System.err.printf("\nyou submitted:\n");
 		for(String s : args) System.err.printf("%s\n",s);
 	}
 
 	public static void main(String[] args) {
 		// check arguments
-		if (args.length < 2 || args.length > 4) {
+		if (args.length < 3 || args.length > 5) {
 			usage(args);
 			return;
 		}
 		boolean debugMode = false;
-		if (args.length > 2) { // check our optional arguments.
-			// check the 3rd argument
-			if (args[2].equals("-d")) {
+		if (args.length > 3) { // check our optional arguments.
+			// check the 4th argument
+			if (args[3].equals("-d")) {
 				debugMode = true;
 			} else {
 				usage(args);
@@ -50,8 +51,10 @@ public class VTag {
 		try {
 			// viterbi
 			vtag.test(args[1], false);
-			// forward backward
-			vtag.test(args[1], true);
+			for(int i = 0; i < 10; i++) {
+				// forward backward em
+				vtag.test(args[1], true);
+			}
 		} catch (IOException e) {
 			System.err.println("error testing!\n");
 			e.printStackTrace();
