@@ -143,7 +143,7 @@ public class TagDict {
 		intsToWords = new HashMap<Integer, String>();
 		intsToTags = new HashMap<Integer, String>();
 		wordTagDictionary = new HashMap<String, ArrayList<Integer> >();
-		incrementCountOfWord(SENTENCE_BOUNDARY);
+//		incrementCountOfWord(SENTENCE_BOUNDARY);
 		smoother = SMOOTHING.none;
 		vocabSize = 0;
 	}
@@ -621,7 +621,7 @@ public class TagDict {
 	 */
 	public Probability getBackoffProbTagGivenPrevTag(int tag, int prevTag) {
 		if(smoother.equals(SMOOTHING.oneCountSmoothing)) {
-			if(debugMode) System.out.printf("\nbackoff prob(%s | %s)\n", getTagFromKey(tag), getTagFromKey(prevTag));
+			if(debugMode) System.out.printf("\nbackoff prob tag prev tag\np(%s | %s)\n", getTagFromKey(tag), getTagFromKey(prevTag));
 			// really small number for lambda -> 1e-100, or 1
 //			Probability lambda = new Probability(0);
 			Probability lambda = new Probability(Math.pow(10, -100));
@@ -630,7 +630,7 @@ public class TagDict {
 			// lambda = count of singletons of prev tag
 			if(debugMode) System.out.printf("singleton tag count for %s:%s\n", getTagFromKey(prevTag), getSingletonTagPrevTagCount(prevTag));
 			lambda = lambda.add(new Probability(getSingletonTagPrevTagCount(prevTag)));
-			if(debugMode) System.out.println("lambda + singleton:"+lambda);
+			if(debugMode) System.out.println("lambda = lambda + singleton count\nlambda:"+lambda);
 			// p backoff = p unsmoothed = (count (tag)) / (n)
 			Probability n = new Probability(numberTagTokens);
 //			Probability n = new Probability(numberTagTokens - 1);
@@ -665,7 +665,7 @@ public class TagDict {
 	 */
 	public Probability getBackoffProbWordGivenTag(int word, int tag) {
 		if(smoother.equals(SMOOTHING.oneCountSmoothing)) {
-			if(debugMode) System.out.printf("\nbackoff prob(%s | %s)\n", getWordFromKey(word), getTagFromKey(tag));
+			if(debugMode) System.out.printf("\nbackoff prob word given tag\np(%s | %s)\n", getWordFromKey(word), getTagFromKey(tag));
 			// really small number for lambda -> 1e-100, or 1
 //			Probability lambda = new Probability(0);
 			Probability lambda = new Probability(Math.pow(10, -100));
@@ -674,7 +674,7 @@ public class TagDict {
 			// lambda = singleton count - backoff proportional to the open-ness of a tag class
 			if(debugMode) System.out.printf("singleton word count for %s:%s\n", getTagFromKey(tag), new Probability(getSingletonWordTagCount(tag)));
 			lambda = lambda.add(new Probability(getSingletonWordTagCount(tag)));
-			if(debugMode) System.out.println("lambda + singleton count:"+lambda);
+			if(debugMode) System.out.println("lambda = lambda + singleton count\nlambda:"+lambda);
 			if(tag == getKeyFromTag(SENTENCE_BOUNDARY)) {
 				if(debugMode) System.out.println("but set lambda = 0 if "+SENTENCE_BOUNDARY);
 				// force lambda to be 0 if ### so we never smooth
@@ -769,6 +769,7 @@ public class TagDict {
 		// debug purposes
 		StringBuilder sb = new StringBuilder();
 		// prints out all words
+		sb.append("\n====== TagDict ======\n");
 		sb.append("====== Words ======\n");
 		for(int i : intsToWords.keySet()) {
 			sb.append("word ").append(i).append(" aka '").append(getWordFromKey(i)).append("'\n");
@@ -777,34 +778,6 @@ public class TagDict {
 		sb.append("====== Tags ======\n");
 		for(int i : intsToTags.keySet()) {
 			sb.append("tag ").append(i).append(" aka '").append(getTagFromKey(i)).append("'\n");
-		}
-		// prints out all emission probabilities
-		/**
-		 * p(word | tag) = p(word, tag) / p(tag)
-		 * 
-		 * p(word, tag) = number of times we saw this combo / number combos
-		 * p(tag) = number of times we saw this tag / number tag tokens
-		 */
-		for(String wordTag : countWordTag.keySet()) {
-			String[] split = wordTag.split(" ");
-			int word = Integer.parseInt(split[0]), tag = Integer.parseInt(split[1]);
-			sb.append("p(").append(getWordFromKey(word))
-				.append("|").append(getTagFromKey(tag)).append(") = ")
-				.append(getProbWordGivenTag(word, tag)).append("\n");
-		}
-		// and then all transmission probabilities
-		/**
-		 * p(tag | prev tag) = p(tag, prev tag) / p(prev tag)
-		 * 
-		 * p(tag, prev tag) = number of times we saw this combo / number tag tokens	
-		 * p(prev tag) = number of times we saw this prev tag context / number tag tokens
-		 */
-		for(String tagPrevTag : countTagPrevTag.keySet()) {
-			String[] split = tagPrevTag.split(" ");
-			int tag = Integer.parseInt(split[0]), prevTag = Integer.parseInt(split[1]);
-			sb.append("p(").append(getTagFromKey(tag))
-				.append("|").append(getTagFromKey(prevTag)).append(") = ")
-				.append(getProbTagGivenPrevTag(tag, prevTag)).append("\n");
 		}
 		// print out tag dictionary - for each word, list of possible tags
 		sb.append("====== Tag Dictionary ======\n");
@@ -820,14 +793,22 @@ public class TagDict {
 			sb.deleteCharAt(sb.length()-1);
 			sb.append("]\n");
 		}
-		// print out word count
-		sb.append("====== Word Counts ======\n");
+		sb.append("====== Number word tag tokens ======\n");
+		sb.append(numberWordTagTokens);
+		sb.append("\n====== Number tag tokens ======\n");
+		sb.append(numberTagTokens);
+		sb.append("\n====== Word Counts ======\n");
 		for(String s : countWord.keySet()) {
 			int word = Integer.parseInt(s);
 			sb.append("-> word:").append(word).append(" aka ").append(getWordFromKey(word))
 			.append(" :: ").append(countWord.get(s)).append("\n");
 		}
-		// print out word count
+		sb.append("\n====== Tag Counts ======\n");
+		for(String s : countPrevTag.keySet()) {
+			int tag = Integer.parseInt(s);
+			sb.append("-> tag:").append(tag).append(" aka ").append(getTagFromKey(tag))
+			.append(" :: ").append(countPrevTag.get(s)).append("\n");
+		}
 		sb.append("====== Singleton Tag Counts for Prev Tags ======\n");
 		for(String s : countSingletonTagPrevTag.keySet()) {
 			int tag = Integer.parseInt(s);
@@ -839,6 +820,53 @@ public class TagDict {
 			int tag = Integer.parseInt(s);
 			sb.append("-> tag:").append(tag).append(" aka ").append(getTagFromKey(tag))
 			.append(" :: ").append(countSingletonWordTags.get(s)).append("\n");
+		}
+		sb.append("====== (Tag, word) Counts ======\n");
+		for(String s : countWordTag.keySet()) {
+			String[] split = s.split(" ");
+			int word = Integer.parseInt(split[0]), tag = Integer.parseInt(split[1]);
+			sb.append("-> word,tag:").append(getWordFromKey(word)).append(",").append(getTagFromKey(tag))
+				.append(" :: ").append(countWordTag.get(s)).append("\n");
+		}
+		sb.append("====== (Tag, prev tag) Counts ======\n");
+		for(String s : countTagPrevTag.keySet()) {
+			String[] split = s.split(" ");
+			int tag = Integer.parseInt(split[0]), prevTag = Integer.parseInt(split[1]);
+			sb.append("-> tag,prevTag:").append(getTagFromKey(tag)).append(",").append(getTagFromKey(prevTag))
+				.append(" :: ").append(countTagPrevTag.get(s)).append("\n");
+		}
+		// prints out all emission probabilities
+		/**
+		 * p(word | tag) = p(word, tag) / p(tag)
+		 * 
+		 * p(word, tag) = number of times we saw this combo / number combos
+		 * p(tag) = number of times we saw this tag / number tag tokens
+		 */
+		sb.append("====== Emission probabilities ======\n");
+		for (String wordTag : countWordTag.keySet()) {
+			String[] split = wordTag.split(" ");
+			int word = Integer.parseInt(split[0]), tag = Integer
+					.parseInt(split[1]);
+			sb.append("p(").append(getWordFromKey(word)).append("|")
+					.append(getTagFromKey(tag)).append(") = ")
+					.append(getProbWordGivenTag(word, tag)).append("\n");
+		}
+		// and then all transmission probabilities
+		/**
+		 * p(tag | prev tag) = p(tag, prev tag) / p(prev tag)
+		 * 
+		 * p(tag, prev tag) = number of times we saw this combo / number tag
+		 * tokens p(prev tag) = number of times we saw this prev tag context /
+		 * number tag tokens
+		 */
+		sb.append("====== Transmission probabilities ======\n");
+		for (String tagPrevTag : countTagPrevTag.keySet()) {
+			String[] split = tagPrevTag.split(" ");
+			int tag = Integer.parseInt(split[0]), prevTag = Integer
+					.parseInt(split[1]);
+			sb.append("p(").append(getTagFromKey(tag)).append("|")
+					.append(getTagFromKey(prevTag)).append(") = ")
+					.append(getProbTagGivenPrevTag(tag, prevTag)).append("\n");
 		}
 		return sb.toString();
 	}

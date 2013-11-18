@@ -109,5 +109,11 @@ public class Probability {
 		System.out.println("3x0 = "+three.product(zero));
 		System.out.println("3/0 = "+three.divide(zero));
 		System.out.println("max of 3 and 0 = "+three.max(zero));
+		
+		System.out.println("3x4x.1 = "+three.product(four).product(tenth));
+		System.out.println("3+4x.1 = "+three.add(four.product(tenth)));
+		System.out.println("(3+4)x.1 = "+three.add(four).product(tenth)); 
+		System.out.println("3x4+.1 = "+three.product(four).add(tenth));
+		System.out.println("3x(4+.1) = "+three.product(four.add(tenth)));
 	}
 }

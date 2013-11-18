@@ -9,12 +9,11 @@ public class VTag {
 	 * Prints an example of proper usage of the program
 	 */
 	private static void usage(String[] args) {
-		System.err.println("usage: requires 2 arguments.\narg[0] = training_file\n" +
+		System.err.println("usage: requires 2 arguments.\n" +
+				"arg[0] = training_file\n" +
 				"arg[1] = test_file\n" +
-				"Defaults to max-product, but one may specify an optional 3rd argument:\n" +
-				" arg[2] = 's' or 'm' for sum- or max-product\n" +
-				"Defaults to off, but one may specify an optional 4th argument:\n" +
-				" arg[3] = -d to enable debug mode.");
+				"Defaults to off, but one may specify an optional 3rd argument:\n" +
+				" arg[2] = -d to enable debug mode.");
 		System.err.printf("\nyou submitted:\n");
 		for(String s : args) System.err.printf("%s\n",s);
 	}
@@ -25,32 +24,21 @@ public class VTag {
 			usage(args);
 			return;
 		}
-		boolean useSumProduct = false, debugMode = false;
+		boolean debugMode = false;
 		if (args.length > 2) { // check our optional arguments.
 			// check the 3rd argument
-			if (args[2].equals("-s")) {
-				useSumProduct = true;
-			} else if (args[2].equals("-m")) {
-				useSumProduct = false;
+			if (args[2].equals("-d")) {
+				debugMode = true;
 			} else {
 				usage(args);
 				return;
-			}
-			// check the 4th argument
-			if (args.length > 3) {
-				if (args[3].equals("-d")) {
-					debugMode = true;
-				} else {
-					usage(args);
-					return;
-				}
 			}
 		}
 		// now that we have our arguments...
 		ViterbiTagger vtag = new ViterbiTagger();
 		vtag.setDebugMode(debugMode);
-//		TagDict.setDebugMode(debugMode);
-		vtag.getTagDict().setSmoother(SMOOTHING.oneCountSmoothing);
+		TagDict.setDebugMode(debugMode);
+//		vtag.getTagDict().setSmoother(SMOOTHING.oneCountSmoothing);
 		try {
 			vtag.train(args[0]);
 		} catch (IOException e) {
@@ -63,7 +51,7 @@ public class VTag {
 			// viterbi
 			vtag.test(args[1], false);
 			// forward backward
-			vtag.test(args[1], true);
+//			vtag.test(args[1], true);
 		} catch (IOException e) {
 			System.err.println("error testing!\n");
 			e.printStackTrace();

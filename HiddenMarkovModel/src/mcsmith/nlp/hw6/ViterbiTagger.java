@@ -9,8 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import mcsmith.nlp.hw6.TagDict.SMOOTHING;
-
 public class ViterbiTagger {
 	public static final String WORD_TAG_DELIMITER = "/";
 	private boolean debugMode;
@@ -172,10 +170,6 @@ public class ViterbiTagger {
 			if(debugMode) System.out.println("S:"+S);
 			// backward pass
 			initializeBackward(testData);
-			if(debugMode) {
-				System.out.println("\nafter backward init!\n");
-				printData(testData, backwardValues);
-			}
 			runPass(testData, false, useSumProduct);
 			if(debugMode) {
 				System.out.println("\nafter backward pass!\n");
@@ -278,6 +272,7 @@ public class ViterbiTagger {
 			String datum = testData.get(i), prevDatum = testData.get(i-1);
 			String[] split = datum.split(WORD_TAG_DELIMITER), prevSplit = prevDatum.split(WORD_TAG_DELIMITER);
 			String word = split[0], prevWord = prevSplit[0];
+			System.out.printf("\n*******\nword:%s\n",word);
 			int wordKey = td.getKeyFromWord(word), prevWordKey = td.getKeyFromWord(prevWord);
 			// for each possible tag of this datum, we have one state.
 			for(int possibleTag : td.getTagDictForWord(wordKey)) {
@@ -285,8 +280,10 @@ public class ViterbiTagger {
 				// for each possible tag of the previous datum...
 				for(int prevPossibleTag : td.getTagDictForWord(prevWordKey)) {
 					// p = arc prob = p(tag | prev tag) * p(word | tag)
+					System.out.printf("\ntag:%s prevTag:%s\n", td.getTagFromKey(possibleTag), td.getTagFromKey(prevPossibleTag));
 					Probability arcProb = td.getBackoffProbTagGivenPrevTag(possibleTag, prevPossibleTag);
 					arcProb = arcProb.product(td.getBackoffProbWordGivenTag(wordKey, possibleTag));
+					System.out.println("arcprob:"+arcProb);
 					if(useSumProduct) {
 						// alpha[t][i] = alpha[t][i] + (alpha[t-1][i-1] * arc prob
 						String prevKey = TagDict.makeKey(prevPossibleTag, i-1);
@@ -338,6 +335,7 @@ public class ViterbiTagger {
 				Probability betaTI = backwardValues.get(currentKey);
 				String endKey = TagDict.makeKey(td.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);
 				Probability S = forwardValues.get(endKey);
+				//TODO do we compare and find the tag with the max p-unigram?
 				Probability pUnigram = alphaTI.product(betaTI).product(S);
 				// for each possible tag of the previous datum...
 				for(int prevPossibleTag : td.getTagDictForWord(prevWordKey)) {
@@ -357,8 +355,9 @@ public class ViterbiTagger {
 						// = alpha (t-1, i-1) * p * beta (t,i) / S
 						Probability prevAlpha = forwardValues.get(prevKey);
 						Probability pBigram = prevAlpha.product(betaTI).product(arcProb).divide(S);
-						//TODO find the tag with the greatest posterior value
-						// we want p([t-1, i-1] | [t i], w )
+						//TODO or do we compare and find the tag [t-1,i-1]
+						// with the max p([t-1, i-1] | [t i], w )
+						// ..to get this we divide pbigram / punigram
 					}
 					else {
 						System.err.println("don't run viterbi backwards!");
@@ -382,7 +381,7 @@ public class ViterbiTagger {
 	 */
 	private int[] getCompareResultFromBackpointers(ArrayList<String> testData, Map<String, Integer> backpointers) {
 		// init count of correct tags (note we know the number of total tags is N)
-		double totalCorrectTags = 0, totalKnownWords = 0, totalKnownTaggedCorrectly = 0,
+		double totalWords = 0, totalCorrectTags = 0, totalKnownWords = 0, totalKnownTaggedCorrectly = 0,
 				totalNovelWords = 0, totalNovelTaggedCorrectly = 0, numberSentenceBoundaries = 0;
 		// declare array and follow back pointers
 		int[] result = new int[testData.size()];
@@ -404,36 +403,44 @@ public class ViterbiTagger {
 				return null;
 			}
 			// update counts
-//			Integer obsPrevWord = td.getKeyFromWord(datum[0]); // may be null if unknown word
 			int obsPrevTag = td.getKeyFromTag(datum[1]); // should never be null - we assume we've seen all tags
-			if(obsPrevTag == prevTag) {
-				totalCorrectTags++;
-			}
-			// was the word known?
-			if(td.knowsWord(datum[0])) {
-				totalKnownWords++;
+			// don't count our sentence boundary
+			if(obsPrevTag != td.getKeyFromTag(TagDict.SENTENCE_BOUNDARY)) {
+				totalWords++;
 				if(obsPrevTag == prevTag) {
-					totalKnownTaggedCorrectly++;
+					totalCorrectTags++;
 				}
-			}
-			else {
-				totalNovelWords++;
-				if(obsPrevTag == prevTag) {
-					totalNovelTaggedCorrectly++;
+				// was the word known?
+				if(td.knowsWord(datum[0])) {
+					totalKnownWords++;
+					if(obsPrevTag == prevTag) {
+						totalKnownTaggedCorrectly++;
+					}
 				}
-			}
-			// was the word our sentence boundary? track this number, to subtract later
-			if(obsPrevTag == td.getKeyFromTag(TagDict.SENTENCE_BOUNDARY)) {
-				numberSentenceBoundaries++;
+				else {
+					totalNovelWords++;
+					if(obsPrevTag == prevTag) {
+						totalNovelTaggedCorrectly++;
+					}
+				}
 			}
 			// and continue following
 			currTag = prevTag;
 		}
-		if(debugMode) System.out.println("num ###:"+numberSentenceBoundaries);
+		if(debugMode) {
+			System.out.println("n:"+n);
+			System.out.println("num ###:"+numberSentenceBoundaries);
+			System.out.println("num words:"+totalWords);
+			System.out.println("overall correct:"+totalCorrectTags);
+			System.out.println("known correct:"+totalKnownTaggedCorrectly);
+			System.out.println("num known words:"+totalKnownWords);
+			System.out.println("novel correct:"+totalNovelTaggedCorrectly);
+			System.out.println("num novel words:"+totalNovelWords);
+		}
 		// now that we've got all our counts, compute the accuracy scores
 		// don't count the sentence boundaries when we score
-		double overallAccuracy = totalCorrectTags / (n-numberSentenceBoundaries), 
-				knownAccuracy = totalKnownTaggedCorrectly / (totalKnownWords - numberSentenceBoundaries),
+		double overallAccuracy = totalCorrectTags / totalWords, 
+				knownAccuracy = totalKnownTaggedCorrectly / totalKnownWords,
 				novelAccuracy = totalNovelTaggedCorrectly / totalNovelWords;
 		if(testData.size() == 0) {
 			overallAccuracy = 0;
@@ -448,11 +455,11 @@ public class ViterbiTagger {
 		String endKey = TagDict.makeKey(td.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);
 		Probability finalProb = forwardValues.get(endKey);
 		// and print
-		System.out.printf("Tagging accuracy (Viterbi decoding): %.4f%% " +
-				"(known: %.4f%% " +
-				"novel: %.4f%%)\n"
-					+"Perplexity per Viterbi-tagged test word: %.4f\n",
-					overallAccuracy, knownAccuracy, novelAccuracy, 
+		System.out.printf("Tagging accuracy (Viterbi decoding): %.2f%% " +
+				"(known: %.2f%% " +
+				"novel: %.2f%%)\n"
+					+"Perplexity per Viterbi-tagged test word: %.3f\n",
+					overallAccuracy * 100, knownAccuracy * 100, novelAccuracy * 100, 
 					getPerplexityPerTaggedWord(finalProb, n));
 		return result;
 	}
