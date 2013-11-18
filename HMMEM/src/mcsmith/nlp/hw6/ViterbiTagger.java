@@ -381,7 +381,7 @@ public class ViterbiTagger {
 			String word = split[0], prevWord = prevSplit[0];
 			int wordKey = TagDict.getKeyFromWord(word), prevWordKey = TagDict.getKeyFromWord(prevWord);
 			// update word count
-			tdTrain.incrementCountOfWord(word);
+			tdTrain.addCountOfWord(word);
 			// for each possible tag of this datum, we have one state.
 			for(int possibleTag : tdTrain.getTagDictForWord(wordKey)) {
 				String currentKey = TagDict.makeKey(possibleTag, i);

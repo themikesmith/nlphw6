@@ -964,10 +964,27 @@ public class TagDict {
 		// TODO Auto-generated method stub
 		
 	}
+	/**
+	 * Adds the time seen the tag context to our new counts.
+	 * Probabilistic counting.
+	 * @param prevPossibleTag
+	 * @param current
+	 */
 	public void addTimesSeenTagContext(int prevPossibleTag, Probability current) {
 		// TODO Auto-generated method stub
 		String key = makeKey(prevPossibleTag);
 		countPrevTagNew.put(key, countPrevTagNew.get(key).add(current));
+		// will throw null pointer - make sure we init correctly
+	}
+	/**
+	 * Adds the time seen the word to our new counts.
+	 * Always incrementing by 1 - either we see a word or we don't.
+	 * @param word
+	 */
+	public void addCountOfWord(String word) {
+		// TODO Auto-generated method stub
+		String key = makeKey(getKeyFromWord(word));
+		countWordNew.put(key, countWordNew.get(key).add(new Probability(1)));
 		// will throw null pointer - make sure we init correctly
 	}
 }
