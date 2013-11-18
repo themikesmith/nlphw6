@@ -115,8 +115,6 @@ public class ViterbiTagger {
 		ArrayList<String> testData = new ArrayList<String>();
 		String line;
 		while ((line = br.readLine()) != null) {
-			// TODO is this all?
-			// TODO add in adding to vocabulary size
 			// read line
 			String[] wordTag = line.split(WORD_TAG_DELIMITER);
 			if (wordTag.length != 2) {
@@ -135,14 +133,12 @@ public class ViterbiTagger {
 		if(debugMode) System.out.println("vocab size:"+TagDict.getVocabSize());
 		return testData;
 	}
-	private ArrayList<String> readRawData(TagDict td, String testFilename) throws IOException {
-		if(debugMode) System.out.println("reading test file from:"+testFilename);
-		BufferedReader br = new BufferedReader(new FileReader(testFilename));
-		ArrayList<String> testData = new ArrayList<String>();
+	private ArrayList<String> readRawData(TagDict td, String rawFilename) throws IOException {
+		if(debugMode) System.out.println("reading raw file from:"+rawFilename);
+		BufferedReader br = new BufferedReader(new FileReader(rawFilename));
+		ArrayList<String> rawData = new ArrayList<String>();
 		String line;
 		while ((line = br.readLine()) != null) {
-			// TODO is this all?
-			// TODO add in adding to vocabulary size
 			// read line
 			String[] wordTag = line.split(WORD_TAG_DELIMITER);
 			if (wordTag.length == 1) {
@@ -152,18 +148,17 @@ public class ViterbiTagger {
 				if (debugMode) System.out.println(": " + line);
 				TagDict.addWordToDict(word);
 				td.initWordCounter(word);
-				// read test data into memory
-				testData.add(line);
+				// read raw data into memory
+				rawData.add(line);
 			}
 			else {
 				br.close();
 				throw new IOException("error! unable to parse line:" + line);
 			}
-			
 		}
 		br.close();
 		if(debugMode) System.out.println("vocab size:"+TagDict.getVocabSize());
-		return testData;
+		return rawData;
 	}
 	public void testViterbi(ArrayList<String> testData) {
 		// we use backpointers to store the tag with the max probability at each step
