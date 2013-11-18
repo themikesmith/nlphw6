@@ -204,8 +204,8 @@ public class TagDict {
 	 * Stores number of tag tokens
 	 */
 	private int numberTagTokens;
-	private int numberTagTokensCurrent;
-	private int numberTagTokensNew;
+	private double numberTagTokensOriginal;
+	private double numberTagTokensNew;
 	/**
 	 * Table used for transmission probabilities.  Shares parameters across time steps.
 	 * Used for computing p(tag | prev tag) = p(tag, prev tag) / p(prev tag)
@@ -219,8 +219,8 @@ public class TagDict {
 	 * and as values the number of times we observed the first tag to follow the second.
 	 */
 	private Map<String, Integer> countTagPrevTag;
-	private Map<String, Integer> countTagPrevTagCurrent;
-	private Map<String, Integer> countTagPrevTagNew;
+	private Map<String, Probability> countTagPrevTagOriginal;
+	private Map<String, Probability> countTagPrevTagNew;
 	/**
 	 * Table used for transmission probabilities.  Shares parameters across time steps.
 	 * Used for computing p(tag | prev tag) = p(tag, prev tag) / p(prev tag)
@@ -233,8 +233,8 @@ public class TagDict {
 	 * and as values the number of times we observed the first tag to follow the second.
 	 */
 	private Map<String, Integer> countPrevTag;
-	private Map<String, Integer> countPrevTagCurrent;
-	private Map<String, Integer> countPrevTagNew;
+	private Map<String, Probability> countPrevTagOriginal;
+	private Map<String, Probability> countPrevTagNew;
 	/**
 	 * Count used for emission probabilities.  Shares parameters across time steps.
 	 * 
@@ -246,8 +246,8 @@ public class TagDict {
 	 * Stores number of word tag tokens
 	 */
 	private int numberWordTagTokens;
-	private int numberWordTagTokensCurrent;
-	private int numberWordTagTokensNew;
+	private double numberWordTagTokensOriginal;
+	private double numberWordTagTokensNew;
 	/**
 	 * Table used for emission probabilities.  Shares parameters across time steps.
 	 * 
@@ -261,8 +261,8 @@ public class TagDict {
 	 * and as values the number of times we observed the word to receive the tag.
 	 */
 	private Map<String, Integer> countWordTag;
-	private Map<String, Integer> countWordTagCurrent;
-	private Map<String, Integer> countWordTagNew;
+	private Map<String, Probability> countWordTagOriginal;
+	private Map<String, Probability> countWordTagNew;
 	/**
 	 * Table used for backed off emission probabilities.  Shares parameters across time steps.
 	 * 
@@ -273,8 +273,8 @@ public class TagDict {
 	 * and as values the number of times we observed the word.
 	 */
 	private Map<String, Integer> countWord;
-	private Map<String, Integer> countWordCurrent;
-	private Map<String, Integer> countWordNew;
+	private Map<String, Probability> countWordOriginal;
+	private Map<String, Probability> countWordNew;
 	/**
 	 * Counts the number of singleton tag types for each prev tag
 	 * stores the number of tag types t such that count(t, t-1) = 1
@@ -296,25 +296,25 @@ public class TagDict {
 	 */
 	public TagDict() {
 		numberTagTokens = 0;
-		numberTagTokensCurrent = 0;
+		numberTagTokensOriginal = 0;
 		numberTagTokensNew = 0;
 		countTagPrevTag = new HashMap<String, Integer>();
-		countTagPrevTagCurrent = new HashMap<String, Integer>();
-		countTagPrevTagNew = new HashMap<String, Integer>();
+		countTagPrevTagOriginal = new HashMap<String, Probability>();
+		countTagPrevTagNew = new HashMap<String, Probability>();
 		countSingletonTagPrevTag = new HashMap<String, Integer>();
 		countSingletonWordTags = new HashMap<String, Integer>();
 		countPrevTag = new HashMap<String, Integer>();
-		countPrevTagCurrent = new HashMap<String, Integer>();
-		countPrevTagNew = new HashMap<String, Integer>();
+		countPrevTagOriginal = new HashMap<String, Probability>();
+		countPrevTagNew = new HashMap<String, Probability>();
 		numberWordTagTokens = 0;
-		numberWordTagTokensCurrent = 0;
+		numberWordTagTokensOriginal = 0;
 		numberWordTagTokensNew = 0;
 		countWordTag = new HashMap<String, Integer>();
-		countWordTagCurrent = new HashMap<String, Integer>();
-		countWordTagNew = new HashMap<String, Integer>();
+		countWordTagOriginal = new HashMap<String, Probability>();
+		countWordTagNew = new HashMap<String, Probability>();
 		countWord = new HashMap<String, Integer>();
-		countWordCurrent = new HashMap<String, Integer>();
-		countWordNew = new HashMap<String, Integer>();
+		countWordOriginal = new HashMap<String, Probability>();
+		countWordNew = new HashMap<String, Probability>();
 		wordTagDictionary = new HashMap<String, ArrayList<Integer> >();
 		smoother = SMOOTHING.none;
 	}
@@ -346,7 +346,6 @@ public class TagDict {
 	/**
 	 * Adds the word to the dict if necesary.
 	 * Then Increments our count of the given word.
-	 * Also increases our vocab size if necessary.
 	 * @param word
 	 */
 	public void incrementCountOfWord(String word) {
@@ -917,5 +916,58 @@ public class TagDict {
 					.append(getProbTagGivenPrevTag(tag, prevTag)).append("\n");
 		}
 		return sb.toString();
+	}
+	/**
+	 * Copies the counts from our 'new' tables into the 'current' tables
+	 */
+	public void setCurrentCountsToNew() {
+		// TODO Auto-generated method stub
+		
+	}
+	/**
+	 * Copies the counts from our 'original' tables into the 'new' tables.
+	 */
+	public void setNewCountsToOriginal() {
+		// TODO Auto-generated method stub
+		
+	}
+	/**
+	 * Adds the probabilistic emission count specified
+	 * @param wordKey
+	 * @param possibleTag
+	 * @param pUnigram
+	 */
+	public void addObservedEmissionCount(int wordKey, int possibleTag,
+			Probability pUnigram) {
+		// TODO Auto-generated method stub
+		String key = makeKey(wordKey, possibleTag);
+		countWordTagNew.put(key, countWordTagNew.get(key).add(pUnigram));
+		// will throw null pointer - make sure we init correctly
+	}
+	/**
+	 * Adds the probabilistic transmission count specified
+	 * @param possibleTag
+	 * @param prevPossibleTag
+	 * @param pBigram
+	 */
+	public void addObservedTransmissionCount(int possibleTag,
+			int prevPossibleTag, Probability pBigram) {
+		// TODO Auto-generated method stub
+		String key = makeKey(possibleTag, prevPossibleTag);
+		countTagPrevTagNew.put(key, countTagPrevTagNew.get(key).add(pBigram));
+		// will throw null pointer - make sure we init correctly
+	}
+	/**
+	 * Copies the counts from our 'current' tables into the 'original' tables
+	 */
+	public void saveCurrentCountsToOriginal() {
+		// TODO Auto-generated method stub
+		
+	}
+	public void addTimesSeenTagContext(int prevPossibleTag, Probability current) {
+		// TODO Auto-generated method stub
+		String key = makeKey(prevPossibleTag);
+		countPrevTagNew.put(key, countPrevTagNew.get(key).add(current));
+		// will throw null pointer - make sure we init correctly
 	}
 }

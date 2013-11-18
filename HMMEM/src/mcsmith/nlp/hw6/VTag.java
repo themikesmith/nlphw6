@@ -49,10 +49,11 @@ public class VTag {
 		// debug train!
 		if(debugMode) System.out.println(vtag.getTagDict().toString());
 		try {
-			// viterbi
-			vtag.test(args[1], false);
+			// for this many iterations....
 			for(int i = 0; i < 10; i++) {
-				// forward backward em
+				// run viterbi on test data
+				vtag.test(args[1], false);
+				// then, using raw data, re-estimate training counts with forward backward EM
 				vtag.test(args[1], true);
 			}
 		} catch (IOException e) {

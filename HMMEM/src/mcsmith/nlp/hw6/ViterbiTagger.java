@@ -53,7 +53,6 @@ public class ViterbiTagger {
 		debugMode = false;
 		backpointers = new HashMap<String, Integer>();
 		backwardValues = new HashMap<String, Probability>();
-//		td.setSmoother(SMOOTHING.oneCountSmoothing);
 	}
 	/**
 	 * Assembles our training counts from the trainin file.
@@ -107,6 +106,8 @@ public class ViterbiTagger {
 //		td.decrementBoundaryContextCount(); // correct our counts for the ### context.
 		if(debugMode) System.out.println("number word tag tokens:"+tdTrain.getNumberWordTagTokens());
 		br.close();
+		// and save counts in original
+		tdTrain.saveCurrentCountsToOriginal();
 	}
 	private ArrayList<String> readTestData(TagDict td, String testFilename) throws IOException {
 		if(debugMode) System.out.println("reading test file from:"+testFilename);
@@ -164,7 +165,7 @@ public class ViterbiTagger {
 		if(debugMode) System.out.println("vocab size:"+TagDict.getVocabSize());
 		return testData;
 	}
-	private void testViterbi(ArrayList<String> testData) {
+	public void testViterbi(ArrayList<String> testData) {
 		// we use backpointers to store the tag with the max probability at each step
 		backpointers.clear();
 		// viterbi
@@ -185,31 +186,34 @@ public class ViterbiTagger {
 		}
 	}
 
-	private void runIterationEM(ArrayList<String> testData, ArrayList<String> rawData) {
-		// we use backpointers to store the tag with the highest posterior
-		// probability at each step
+	private void reEstimateTrainingCountsFromRaw(ArrayList<String> rawData) {
 		backpointers.clear();
+		// we use 'current' counts while running the algorithm
+		// but we update the 'new' counts based on these current counts
+		// need to init 'new'
+		tdTrain.setNewCountsToOriginal();
 		// forward backward - forward pass
-		initializeForward(testData);
-		runPass(testData, true, true);
+		initializeForward(rawData);
+		runPass(rawData, true, true);
 		if (debugMode) {
 			System.out.println("\nafter forward pass!\n");
-			printData(testData, forwardValues);
+			printData(rawData, forwardValues);
 		}
 		String endKey = TagDict.makeKey(
 				TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY),
-				testData.size() - 1);
+				rawData.size() - 1);
 		Probability S = forwardValues.get(endKey);
 		if (debugMode)
 			System.out.println("S:" + S);
 		// backward pass
-		initializeBackward(testData);
-		runPass(testData, false, true);
+		initializeBackward(rawData);
+		// in here we compute the new counts while using the current counts...
+		runPass(rawData, false, true);
 		if (debugMode) {
 			System.out.println("\nafter backward pass!\n");
-			printData(testData, backwardValues);
+			printData(rawData, backwardValues);
 		}
-		int[] result = getCompareResultFromBackpointers(testData, true, backpointers);
+		int[] result = getCompareResultFromBackpointers(rawData, true, backpointers);
 		if (debugMode) {
 			System.out.printf("forward-backward produced this tagging!\n");
 			for (int i = 2; i < result.length; i++) {
@@ -217,6 +221,9 @@ public class ViterbiTagger {
 						TagDict.getTagFromKey(result[i]));
 			}
 		}
+		// and now that we're finished, we set the 'new' counts computed in this iteration 
+		// to 'current' for the next
+		tdTrain.setCurrentCountsToNew();
 	}
 	public void test(String testFilename, boolean useSumProduct) throws IOException {
 		ArrayList<String> testData = readTestData(tdTest, testFilename);
@@ -225,7 +232,7 @@ public class ViterbiTagger {
 		}
 		else {
 			ArrayList<String> rawData = readRawData(tdRaw, testFilename);
-			runIterationEM(testData, rawData);
+			reEstimateTrainingCountsFromRaw(rawData);
 		}
 	}
 
@@ -250,17 +257,17 @@ public class ViterbiTagger {
 	/**
 	 * Initialize the HMM with states specified by the tags in the test data
 	 * and with the value specified.
-	 * @param testData
+	 * @param rawData
 	 * @param value
 	 */
-	private void initializeForward(ArrayList<String> testData) {
+	private void initializeForward(ArrayList<String> rawData) {
 		// initialize start state at 1...
 		String startKey = TagDict.makeKey(TagDict.getKeyFromTag(TagDict.SENTENCE_BOUNDARY), 0);
 		forwardValues.put(startKey, new Probability(1));
-		// ... and all other states at value specified
+		// ... and all other states at 0
 		// for all datum in test:
-		for (int i = 1; i < testData.size(); i++) {
-			String datum = testData.get(i);
+		for (int i = 1; i < rawData.size(); i++) {
+			String datum = rawData.get(i);
 			if(debugMode) System.out.printf("i:%d data:%s\n", i, datum);
 			String[] split = datum.split(WORD_TAG_DELIMITER);
 			String word = split[0];
@@ -277,17 +284,18 @@ public class ViterbiTagger {
 	/**
 	 * Initialize the HMM with states specified by the tags in the test data
 	 * and with the value specified.
-	 * @param testData
+	 * @param rawData
 	 * @param value
 	 */
-	private void initializeBackward(ArrayList<String> testData) {
+	private void initializeBackward(ArrayList<String> rawData) {
 		// initialize end state at 1...
-		String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);
+		String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), rawData.size()-1);
 		backwardValues.put(endKey, new Probability(1));
-		// ... and all other states at value specified
+		// ... and all other states at 0
+		
 		// for all datum in test:
-		for (int i = testData.size() - 2; i >= 0; i--) {
-			String datum = testData.get(i);
+		for (int i = rawData.size() - 2; i >= 0; i--) {
+			String datum = rawData.get(i);
 			String[] split = datum.split(WORD_TAG_DELIMITER);
 			String word = split[0];
 			int wordKey = TagDict.getKeyFromWord(word);
@@ -377,6 +385,8 @@ public class ViterbiTagger {
 			String[] split = datum.split(WORD_TAG_DELIMITER), prevSplit = prevDatum.split(WORD_TAG_DELIMITER);
 			String word = split[0], prevWord = prevSplit[0];
 			int wordKey = TagDict.getKeyFromWord(word), prevWordKey = TagDict.getKeyFromWord(prevWord);
+			// update word count
+			tdTrain.incrementCountOfWord(word);
 			// for each possible tag of this datum, we have one state.
 			for(int possibleTag : tdTrain.getTagDictForWord(wordKey)) {
 				String currentKey = TagDict.makeKey(possibleTag, i);
@@ -388,6 +398,9 @@ public class ViterbiTagger {
 				Probability S = forwardValues.get(endKey);
 				//TODO do we compare and find the tag with the max p-unigram?
 				Probability pUnigram = alphaTI.product(betaTI).product(S);
+				// punigram means we have seen the unigram probabilistically that many times
+				// update new counts
+				tdTrain.addObservedEmissionCount(wordKey, possibleTag, pUnigram);
 				// max probability we've found
 				Probability maxProbFound = new Probability(0);
 				// and prev tag that produced it
@@ -410,10 +423,17 @@ public class ViterbiTagger {
 						// = alpha (t-1, i-1) * p * beta (t,i) / S
 						Probability prevAlpha = forwardValues.get(prevKey);
 						Probability pBigram = prevAlpha.product(arcProb).product(betaTI).divide(S);
+						// update counts of transmission
+						tdTrain.addObservedTransmissionCount(possibleTag, prevPossibleTag, pBigram);
+						
 						//TODO or do we compare and find the tag [t-1,i-1]
 						// with the max p([t-1, i-1] | [t i], w )
 						// ..to get this we divide pbigram / punigram
 						Probability current = pBigram.divide(pUnigram);
+						// and update count of seeing context
+						tdTrain.addTimesSeenTagContext(prevPossibleTag, current);
+						
+						// track result with backpointers
 						if(current.getLogProb() > maxProbFound.getLogProb()) {
 							if(debugMode) System.out.println("found new best!");
 							if(debugMode) System.out.println("old tag:"+bestPrevTag);
