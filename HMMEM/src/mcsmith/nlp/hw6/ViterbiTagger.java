@@ -381,7 +381,7 @@ public class ViterbiTagger {
 			String word = split[0], prevWord = prevSplit[0];
 			int wordKey = TagDict.getKeyFromWord(word), prevWordKey = TagDict.getKeyFromWord(prevWord);
 			// update word count
-			tdTrain.addCountOfWord(word);
+			tdTrain.incrementNewCountOfWord(word);
 			// for each possible tag of this datum, we have one state.
 			for(int possibleTag : tdTrain.getTagDictForWord(wordKey)) {
 				String currentKey = TagDict.makeKey(possibleTag, i);
@@ -395,7 +395,7 @@ public class ViterbiTagger {
 				Probability pUnigram = alphaTI.product(betaTI).product(S);
 				// punigram means we have seen the unigram probabilistically that many times
 				// update new counts
-				tdTrain.addObservedEmissionCount(wordKey, possibleTag, pUnigram);
+				tdTrain.incrementNewObservedEmissionCount(wordKey, possibleTag, pUnigram);
 				// max probability we've found
 				Probability maxProbFound = new Probability(0);
 				// and prev tag that produced it
@@ -419,14 +419,14 @@ public class ViterbiTagger {
 						Probability prevAlpha = forwardValues.get(prevKey);
 						Probability pBigram = prevAlpha.product(arcProb).product(betaTI).divide(S);
 						// update counts of transmission
-						tdTrain.addObservedTransmissionCount(possibleTag, prevPossibleTag, pBigram);
+						tdTrain.incrementNewObservedTransmissionCount(possibleTag, prevPossibleTag, pBigram);
 						
 						//TODO or do we compare and find the tag [t-1,i-1]
 						// with the max p([t-1, i-1] | [t i], w )
 						// ..to get this we divide pbigram / punigram
 						Probability current = pBigram.divide(pUnigram);
 						// and update count of seeing context
-						tdTrain.addTimesSeenTagContext(prevPossibleTag, current);
+						tdTrain.incrementNewTimesSeenTagContext(prevPossibleTag, current);
 						
 						// track result with backpointers
 						if(current.getLogProb() > maxProbFound.getLogProb()) {

@@ -932,12 +932,19 @@ public class TagDict {
 		
 	}
 	/**
+	 * Copies the counts from our 'current' tables into the 'original' tables
+	 */
+	public void saveCurrentCountsToOriginal() {
+		// TODO Auto-generated method stub
+		
+	}
+	/**
 	 * Adds the probabilistic emission count specified
 	 * @param wordKey
 	 * @param possibleTag
 	 * @param pUnigram
 	 */
-	public void addObservedEmissionCount(int wordKey, int possibleTag,
+	public void incrementNewObservedEmissionCount(int wordKey, int possibleTag,
 			Probability pUnigram) {
 		// TODO Auto-generated method stub
 		String key = makeKey(wordKey, possibleTag);
@@ -950,7 +957,7 @@ public class TagDict {
 	 * @param prevPossibleTag
 	 * @param pBigram
 	 */
-	public void addObservedTransmissionCount(int possibleTag,
+	public void incrementNewObservedTransmissionCount(int possibleTag,
 			int prevPossibleTag, Probability pBigram) {
 		// TODO Auto-generated method stub
 		String key = makeKey(possibleTag, prevPossibleTag);
@@ -958,19 +965,12 @@ public class TagDict {
 		// will throw null pointer - make sure we init correctly
 	}
 	/**
-	 * Copies the counts from our 'current' tables into the 'original' tables
-	 */
-	public void saveCurrentCountsToOriginal() {
-		// TODO Auto-generated method stub
-		
-	}
-	/**
 	 * Adds the time seen the tag context to our new counts.
 	 * Probabilistic counting.
 	 * @param prevPossibleTag
 	 * @param current
 	 */
-	public void addTimesSeenTagContext(int prevPossibleTag, Probability current) {
+	public void incrementNewTimesSeenTagContext(int prevPossibleTag, Probability current) {
 		// TODO Auto-generated method stub
 		String key = makeKey(prevPossibleTag);
 		countPrevTagNew.put(key, countPrevTagNew.get(key).add(current));
@@ -981,7 +981,7 @@ public class TagDict {
 	 * Always incrementing by 1 - either we see a word or we don't.
 	 * @param word
 	 */
-	public void addCountOfWord(String word) {
+	public void incrementNewCountOfWord(String word) {
 		// TODO Auto-generated method stub
 		String key = makeKey(getKeyFromWord(word));
 		countWordNew.put(key, countWordNew.get(key).add(new Probability(1)));
