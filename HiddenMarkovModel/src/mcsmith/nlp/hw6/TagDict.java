@@ -3,6 +3,7 @@ package mcsmith.nlp.hw6;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -16,13 +17,182 @@ public class TagDict {
 	private static boolean debugMode = false;
 	public static void setDebugMode(boolean b) {debugMode = b;}
 	/**
+	 * Marker for the boundary between sentences.  It is its own tag.
+	 */
+	public static final String SENTENCE_BOUNDARY = "###", OOV = "[==OOV==]";
+	/**
+	 * Table used to store the global vocab.
+	 * this is the training and test and raw vocab.
+	 * 
+	 * This table stores as keys the plain strings
+	 */
+	private static Set<String> globalVocab = new HashSet<String>();
+	static {
+		globalVocab.add(OOV);
+	}
+	/**
+	 * 
+	 * @return the size of the global vocab
+	 */
+	public static int getVocabSize() {
+		return globalVocab.size();
+	}
+	/**
+	 * Table for going from words to integer keys.
+	 */
+	private static Map<String, Integer> wordsToInts = new HashMap<String, Integer>();
+	/**
+	 * Table for going from words to integer keys.
+	 */
+	private static Map<String, Integer> tagsToInts = new HashMap<String, Integer>();
+	/**
+	 * Table for going from words to integer keys.
+	 */
+	private static Map<Integer, String> intsToWords = new HashMap<Integer, String>();
+	/**
+	 * Table for going from words to integer keys.
+	 */
+	private static Map<Integer, String> intsToTags = new HashMap<Integer, String>();
+	/**
+	 * Add a word to the dictionary.
+	 * Checks for duplicates - will not add a duplicate.
+	 * Stores it in the words to ints, and ints to words tables.
+	 * Increments the next integer to be used as a converter key.
+	 * @param word
+	 * @return true if changes made, false otherwise
+	 */
+	public static boolean addWordToDict(String word) {
+		if(!wordsToInts.containsKey(word)) {
+			int number = wordsToInts.keySet().size();
+			wordsToInts.put(word, number);
+			intsToWords.put(number, word);
+			if(debugMode) System.out.printf("adding word %d:'%s'\n", number, word);
+			if(debugMode) System.out.printf("num words now:%d\n", intsToWords.keySet().size());
+			if(debugMode) System.out.printf("words now:%s\n", intsToWords);
+			if(debugMode) System.out.printf("ints now:%s\n", wordsToInts);
+			globalVocab.add(word);
+			return true;
+		}
+		return false;
+	}
+	/**
+	 * Add a tag to the dictionary.
+	 * Checks for duplicates - will not add a duplicate.
+	 * Stores it in the tags to ints, and ints to tags tables.
+	 * Increments the next integer to be used as a converter key.
+	 * @param tag
+	 */
+	public static void addTagToDict(String tag) {
+		if(!tagsToInts.containsKey(tag)) {
+			int number = tagsToInts.keySet().size();
+			tagsToInts.put(tag, number);
+			intsToTags.put(number, tag);
+			if(debugMode) System.out.printf("adding tag %d:'%s'\n", number, tag);
+			if(debugMode) System.out.printf("num tags now:%d\n", intsToTags.keySet().size());
+			if(debugMode) System.out.printf("tags now:%s\n", intsToTags);
+		}
+	}
+	/**
+	 * Given a key, get the word string
+	 * @param key
+	 * @return the word or null if not in dict
+	 */
+	public static String getWordFromKey(int key) {
+		return intsToWords.get(key);
+	}
+	/**
+	 * Given a key, get the word string
+	 * @param key
+	 * @return the word or null if not in dict
+	 */
+	public static Integer getKeyFromWord(String word) {
+		return wordsToInts.get(word);
+	}
+	/**
+	 * checks if we've seen this word
+	 * @param word
+	 * @return true if known, false otherwise
+	 */
+	public static boolean globallyKnowsWord(String word) {
+		return wordsToInts.containsKey(word);
+	}
+	/**
+	 * checks if we've seen this word
+	 * @param word
+	 * @return true if known, false otherwise
+	 */
+	public static boolean globallyKnowsWord(int word) {
+		return intsToWords.containsKey(makeKey(word));
+	}
+	/**
+	 * 
+	 * @return map of all ints to words
+	 */
+	public static Map<Integer, String> getWords() {
+		return intsToWords;
+	}
+	/**
+	 * 
+	 * @return map of all ints to words
+	 */
+	public static Map<Integer, String> getTags() {
+		return intsToTags;
+	}
+	/**
+	 * Given a key, get the word string
+	 * @param key
+	 * @return the word or null if not in dict
+	 */
+	public static String getTagFromKey(int key) {
+		return intsToTags.get(key);
+	}
+	public static Map<Integer, String> getIntsToTags() {
+		return intsToTags;
+	}
+	public static Map<Integer, String> getIntsToWords() {
+		return intsToWords;
+	}
+	/**
+	 * Given a key, get the word string
+	 * @param key
+	 * @return the word or null if not in dict
+	 */
+	public static int getKeyFromTag(String tag) {
+		return tagsToInts.get(tag);
+	}
+
+	/**
+	 * Takes a variable number of index integers and returns a concatenation, for use as a key.
+	 * @param vars
+	 * @return the ordered concatenation as a string, space separated.
+	 */
+	public static String makeKey(Integer... vars) {
+		List<Integer> varList = new ArrayList<Integer>(Arrays.asList(vars));
+		return makeKey(varList);
+	}
+	/**
+	 * Takes a list of index integers and returns a concatenation, for use as a key.
+	 * @param vars
+	 * @return the ordered concatenation as a string, space separated.
+	 */
+	public static String makeKey(List<Integer> vars) {
+		StringBuilder sb = new StringBuilder();
+		Iterator<Integer> it = vars.iterator();
+		while(it.hasNext()) {
+			int i = it.next();
+			sb.append(i).append(" ");
+		}
+		sb.deleteCharAt(sb.length() - 1);
+		return sb.toString();
+	}
+	
+	
+	
+
+	/**
 	 * Tracks which smoothing method to use.
 	 */
 	private SMOOTHING smoother;
-	/**
-	 * Marker for the boundary between sentences.  It is its own tag.
-	 */
-	public static final String SENTENCE_BOUNDARY = "###";
 	/**
 	 * Count used for transmission probabilities.  Shares parameters across time steps.
 	 * 
@@ -104,26 +274,9 @@ public class TagDict {
 	 */
 	private Map<String, Integer> countSingletonWordTags;
 	/**
-	 * Table for going from words to integer keys.
-	 */
-	private Map<String, Integer> wordsToInts;
-	/**
-	 * Table for going from words to integer keys.
-	 */
-	private Map<String, Integer> tagsToInts; 
-	/**
-	 * Table for going from words to integer keys.
-	 */
-	private Map<Integer, String> intsToWords; 
-	/**
-	 * Table for going from words to integer keys.
-	 */
-	private Map<Integer, String> intsToTags;
-	/**
 	 * Map for going from a word to all tags that were observed with the word
 	 */
 	private Map<String, ArrayList<Integer> > wordTagDictionary;
-	private int vocabSize;
 	
 	/**
 	 * Initializes a TagDict.
@@ -138,14 +291,9 @@ public class TagDict {
 		numberWordTagTokens = 0;
 		countWordTag = new HashMap<String, Integer>();
 		countWord = new HashMap<String, Integer>();
-		wordsToInts = new HashMap<String, Integer>();
-		tagsToInts = new HashMap<String, Integer>();
-		intsToWords = new HashMap<Integer, String>();
-		intsToTags = new HashMap<Integer, String>();
 		wordTagDictionary = new HashMap<String, ArrayList<Integer> >();
 //		incrementCountOfWord(SENTENCE_BOUNDARY);
 		smoother = SMOOTHING.none;
-		vocabSize = 0;
 	}
 	public void setSmoother(SMOOTHING sm) {
 		smoother = sm;
@@ -179,10 +327,9 @@ public class TagDict {
 	 * @param word
 	 */
 	public void incrementCountOfWord(String word) {
-		increaseVocab(word);
+		initWordCounter(word);
 		String key = makeKey(getKeyFromWord(word));
-		countWord.put(key,
-				countWord.get(key) + 1);
+		countWord.put(key, countWord.get(key) + 1);
 	}
 	
 	/**
@@ -190,20 +337,11 @@ public class TagDict {
 	 * by initializing the count of the word and incrementing our vocab size
 	 * @param word the word string
 	 */
-	public void increaseVocab(String word) {
-		if(addWordToDict(word)) {
-			// we know that we have added something new.
-			int w = getKeyFromWord(word);
-			String key = makeKey(w);
-			if(!countWord.containsKey(key)) { // init with 0 if necessary
-				if(debugMode) System.out.println("increase vocab! new word:"+word);
-				countWord.put(key, 0);
-				// and increment vocab size
-				vocabSize++;
-			}
-			else {
-				System.err.println("this should never happen with the vocab");
-			}
+	public void initWordCounter(String word) {
+		int w = getKeyFromWord(word);
+		String key = makeKey(w);
+		if(!countWord.containsKey(key)) { // init with 0 if necessary
+			countWord.put(key, 0);
 		}
 	}
 	/**
@@ -223,76 +361,8 @@ public class TagDict {
 		}
 	}
 	
-	/**
-	 * Add a word to the dictionary.
-	 * Checks for duplicates - will not add a duplicate.
-	 * Stores it in the words to ints, and ints to words tables.
-	 * Increments the next integer to be used as a converter key.
-	 * @param word
-	 * @return true if changes made, false otherwise
-	 */
-	public boolean addWordToDict(String word) {
-		if(!wordsToInts.containsKey(word)) {
-			int number = wordsToInts.keySet().size();
-			wordsToInts.put(word, number);
-			intsToWords.put(number, word);
-			if(debugMode) System.out.printf("adding word %d:'%s'\n", number, word);
-			if(debugMode) System.out.printf("num words now:%d\n", intsToWords.keySet().size());
-			if(debugMode) System.out.printf("words now:%s\n", intsToWords);
-			if(debugMode) System.out.printf("ints now:%s\n", wordsToInts);
-			return true;
-		}
-		return false;
-	}
-	/**
-	 * Add a tag to the dictionary.
-	 * Checks for duplicates - will not add a duplicate.
-	 * Stores it in the tags to ints, and ints to tags tables.
-	 * Increments the next integer to be used as a converter key.
-	 * @param tag
-	 */
-	public void addTagToDict(String tag) {
-		if(!tagsToInts.containsKey(tag)) {
-			int number = tagsToInts.keySet().size();
-			tagsToInts.put(tag, number);
-			intsToTags.put(number, tag);
-			if(debugMode) System.out.printf("adding tag %d:'%s'\n", number, tag);
-			if(debugMode) System.out.printf("num tags now:%d\n", intsToTags.keySet().size());
-			if(debugMode) System.out.printf("tags now:%s\n", intsToTags);
-		}
-	}
-	/**
-	 * Given a key, get the word string
-	 * @param key
-	 * @return the word or null if not in dict
-	 */
-	public String getWordFromKey(int key) {
-		return intsToWords.get(key);
-	}
-	/**
-	 * Given a key, get the word string
-	 * @param key
-	 * @return the word or null if not in dict
-	 */
-	public Integer getKeyFromWord(String word) {
-		return wordsToInts.get(word);
-	}
-	/**
-	 * checks if we've seen this word
-	 * @param word
-	 * @return true if known, false otherwise
-	 */
-	public boolean knowsWord(String word) {
-		return wordsToInts.containsKey(word);
-	}
-	/**
-	 * checks if we've seen this word
-	 * @param word
-	 * @return true if known, false otherwise
-	 */
-	public boolean knowsWord(int word) {
-		return intsToWords.containsKey(makeKey(word));
-	}
+	
+
 	/**
 	 * Checks if we've seen this tag / prev tag pair
 	 * @param tag
@@ -315,20 +385,6 @@ public class TagDict {
 	}
 	/**
 	 * 
-	 * @return map of all ints to words
-	 */
-	public Map<Integer, String> getWords() {
-		return intsToWords;
-	}
-	/**
-	 * 
-	 * @return map of all ints to words
-	 */
-	public Map<Integer, String> getTags() {
-		return intsToTags;
-	}
-	/**
-	 * 
 	 * @return map of all word, tag counts
 	 */
 	public Map<String, Integer> getCountsWordTag() {
@@ -340,28 +396,6 @@ public class TagDict {
 	 */
 	public Map<String, Integer> getCountsTagPrevTag() {
 		return countTagPrevTag;
-	}
-	/**
-	 * Given a key, get the word string
-	 * @param key
-	 * @return the word or null if not in dict
-	 */
-	public String getTagFromKey(int key) {
-		return intsToTags.get(key);
-	}
-	public Map<Integer, String> getIntsToTags() {
-		return intsToTags;
-	}
-	public Map<Integer, String> getIntsToWords() {
-		return intsToWords;
-	}
-	/**
-	 * Given a key, get the word string
-	 * @param key
-	 * @return the word or null if not in dict
-	 */
-	public int getKeyFromTag(String tag) {
-		return tagsToInts.get(tag);
 	}
 	/**
 	 * Increments the observed transmission count 
@@ -600,17 +634,21 @@ public class TagDict {
 		return numberTagTokens;
 	}
 	/**
-	 * Decrement our count of context for the sentence boundary - don't count the last one as context
+	 * 
+	 * @param word
+	 * @return true if this tag dict has seen the word, else false
 	 */
-	public void decrementBoundaryContextCount() {
-		int tagKey = getKeyFromTag(SENTENCE_BOUNDARY), wordKey = getKeyFromWord(SENTENCE_BOUNDARY);
-		if(debugMode) System.out.printf("decrementing boundary count:\n%d aka %s\n", tagKey, SENTENCE_BOUNDARY);
-		String key = makeKey(tagKey), wordTagKey = makeKey(wordKey, tagKey);
-		if(debugMode) System.out.printf("key:%s\n", key);
-		if(debugMode) System.out.printf("old value:%d\n", countPrevTag.get(key));
-		if(debugMode) System.out.printf("new value:%d\n", countPrevTag.get(key) - 1);
-		countPrevTag.put(key, countPrevTag.get(key) - 1);
-		countWordTag.put(wordTagKey, countWordTag.get(wordTagKey) - 1);
+	public boolean seenWord(int word) {
+		return countWord.containsKey(makeKey(word));
+	}
+	/**
+	 * 
+	 * @param word
+	 * @return true if this tag dict has seen the word, else false
+	 */
+	public boolean seenWord(String word) {
+		int wordKey = getKeyFromWord(word);
+		return countWord.containsKey(makeKey(wordKey));
 	}
 	/**
 	 * Computes p(tag | previous tag) = the transmission probability.
@@ -619,7 +657,7 @@ public class TagDict {
 	 * Adds the possibility of backoff.
 	 * 
 	 */
-	public Probability getBackoffProbTagGivenPrevTag(int tag, int prevTag) {
+	public Probability getSmoothedProbTagGivenPrevTag(int tag, int prevTag) {
 		if(smoother.equals(SMOOTHING.oneCountSmoothing)) {
 			if(debugMode) System.out.printf("\nbackoff prob tag prev tag\np(%s | %s)\n", getTagFromKey(tag), getTagFromKey(prevTag));
 			// really small number for lambda -> 1e-100, or 1
@@ -663,7 +701,7 @@ public class TagDict {
 	 * Adds the possibility of backoff.
 	 * 
 	 */
-	public Probability getBackoffProbWordGivenTag(int word, int tag) {
+	public Probability getSmoothedProbWordGivenTag(int word, int tag) {
 		if(smoother.equals(SMOOTHING.oneCountSmoothing)) {
 			if(debugMode) System.out.printf("\nbackoff prob word given tag\np(%s | %s)\n", getWordFromKey(word), getTagFromKey(tag));
 			// really small number for lambda -> 1e-100, or 1
@@ -687,8 +725,8 @@ public class TagDict {
 //			int n = numberTagTokens - 1;
 			Probability ptwBackoff = new Probability( getWordCount(word)+1 );
 			if(debugMode) System.out.printf("count(%s):%s\n",getWordFromKey(word), ptwBackoff);
-			if(debugMode) System.out.printf("n:%d V:%d n+V:%d\n",n, vocabSize, n+vocabSize);
-			ptwBackoff = ptwBackoff.divide(new Probability(n + vocabSize));
+			if(debugMode) System.out.printf("n:%d V:%d n+V:%d\n",n, getVocabSize(), n+getVocabSize());
+			ptwBackoff = ptwBackoff.divide(new Probability(n + getVocabSize()));
 			if(debugMode) System.out.printf("ptw backoff:%s\n", ptwBackoff);
 			// now we have:
 			// (count(word, tag) + lambda * pttbackoff) / (count(tag) + lambda)
@@ -703,8 +741,19 @@ public class TagDict {
 			if(debugMode) System.out.println("p(backoff) = "+numerator.divide(denominator));
 			return numerator.divide(denominator);
 		}
+		else if(smoother.equals(SMOOTHING.add1)) {
+			if(debugMode) System.out.println("add 1 smoothing");
+			// we have initialized at 1
+			Probability pWordTag = new Probability(getEmissionCount(word, tag));
+			pWordTag = pWordTag.divide(new Probability(numberWordTagTokens));
+			Probability pTag = new Probability(getTagContextCount(tag));
+			pTag = pTag.divide(new Probability(numberTagTokens));
+			Probability pWordGivenTag = pWordTag.divide(pTag);
+			return pWordGivenTag;
+			
+		}
 		else {
-			System.out.println("smoother not set");
+			if(debugMode) System.out.println("smoother not set");
 			// no other smoothing implemented. return normal prob
 			return getProbWordGivenTag(word, tag);
 		}
@@ -739,32 +788,6 @@ public class TagDict {
 		Probability pWordGivenTag = pWordTag.divide(pTag);
 		return pWordGivenTag;
 	}
-	public int getVocabSize() { return vocabSize; }
-	public void increaseVocabForOOV() {vocabSize++;}
-	/**
-	 * Takes a variable number of index integers and returns a concatenation, for use as a key.
-	 * @param vars
-	 * @return the ordered concatenation as a string, space separated.
-	 */
-	public static String makeKey(Integer... vars) {
-		List<Integer> varList = new ArrayList<Integer>(Arrays.asList(vars));
-		return makeKey(varList);
-	}
-	/**
-	 * Takes a list of index integers and returns a concatenation, for use as a key.
-	 * @param vars
-	 * @return the ordered concatenation as a string, space separated.
-	 */
-	public static String makeKey(List<Integer> vars) {
-		StringBuilder sb = new StringBuilder();
-		Iterator<Integer> it = vars.iterator();
-		while(it.hasNext()) {
-			int i = it.next();
-			sb.append(i).append(" ");
-		}
-		sb.deleteCharAt(sb.length() - 1);
-		return sb.toString();
-	}
 	public String toString() {
 		// debug purposes
 		StringBuilder sb = new StringBuilder();
@@ -797,6 +820,8 @@ public class TagDict {
 		sb.append(numberWordTagTokens);
 		sb.append("\n====== Number tag tokens ======\n");
 		sb.append(numberTagTokens);
+		sb.append("\n====== Global vocab size (including OOV) ======\n");
+		sb.append(getVocabSize()).append(" :: ").append(globalVocab);
 		sb.append("\n====== Word Counts ======\n");
 		for(String s : countWord.keySet()) {
 			int word = Integer.parseInt(s);

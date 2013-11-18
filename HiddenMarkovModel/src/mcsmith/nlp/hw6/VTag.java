@@ -38,7 +38,7 @@ public class VTag {
 		ViterbiTagger vtag = new ViterbiTagger();
 		vtag.setDebugMode(debugMode);
 		TagDict.setDebugMode(debugMode);
-//		vtag.getTagDict().setSmoother(SMOOTHING.oneCountSmoothing);
+		vtag.getTagDict().setSmoother(SMOOTHING.oneCountSmoothing);
 		try {
 			vtag.train(args[0]);
 		} catch (IOException e) {
@@ -51,7 +51,7 @@ public class VTag {
 			// viterbi
 			vtag.test(args[1], false);
 			// forward backward
-//			vtag.test(args[1], true);
+			vtag.test(args[1], true);
 		} catch (IOException e) {
 			System.err.println("error testing!\n");
 			e.printStackTrace();
