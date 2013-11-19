@@ -732,6 +732,7 @@ public class ViterbiTagger {
 					}
 				}
 				else {
+					System.out.println("novel word:"+datum[0]);
 					// novel
 					totalNovelWords++;
 					if(obsPrevTag == prevTag) {
@@ -762,16 +763,16 @@ public class ViterbiTagger {
 				knownAccuracyS = String.format("%.2f%%", knownAccuracy * 100),
 				seenAccuracyS = String.format("%.2f%%", seenAccuracy * 100),
 				novelAccuracyS = String.format("%.2f%%", novelAccuracy * 100);
-		if(testData.size() == 0) {
+		if(overallAccuracy == Double.NaN) {
 			overallAccuracyS = "N/A";
 		}
-		if(totalKnownWords == 0) {
+		if(knownAccuracy == Double.NaN) {
 			knownAccuracyS = "N/A";
 		}
-		if(totalSeenWords == 0) {
+		if(seenAccuracy == Double.NaN) {
 			seenAccuracyS = "N/A";
 		}
-		if(totalNovelWords == 0) {
+		if(novelAccuracy == Double.NaN) {
 			novelAccuracyS = "N/A";
 		}
 		String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);

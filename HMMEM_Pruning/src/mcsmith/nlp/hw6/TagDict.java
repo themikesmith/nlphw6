@@ -1109,7 +1109,6 @@ public class TagDict {
 		String key = makeKey(getKeyFromWord(word));
 //		System.out.printf("incrementing new word count: word:%s c:%s\n", word, Probability.ONE);
 		if(!countWordNew.containsKey(key)) {
-			if(debugMode) System.out.println("novel new word:"+word);
 			countWordNew.put(key, Probability.ZERO);
 		}
 		countWordNew.put(key, countWordNew.get(key).add(Probability.ONE));

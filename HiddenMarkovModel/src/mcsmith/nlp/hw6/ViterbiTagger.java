@@ -477,13 +477,13 @@ public class ViterbiTagger {
 		String overallAccuracyS = String.format("%.2f%%", overallAccuracy * 100), 
 				knownAccuracyS = String.format("%.2f%%", knownAccuracy * 100),
 				novelAccuracyS = String.format("%.2f%%", novelAccuracy * 100);
-		if(testData.size() == 0) {
+		if(overallAccuracy == Double.NaN) {
 			overallAccuracyS = "N/A";
 		}
-		if(totalKnownWords == 0) {
+		if(knownAccuracy == Double.NaN) {
 			knownAccuracyS = "N/A";
 		}
-		if(totalNovelWords == 0) {
+		if(novelAccuracy == Double.NaN) {
 			novelAccuracyS = "N/A";
 		}
 		String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);
