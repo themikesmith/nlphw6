@@ -368,7 +368,11 @@ public class ViterbiTagger {
 		// for all datum in test:
 		boolean printedDot = false;
 		for (int i = 1; i < testData.size(); i++) {
-			if(i % 1000 == 0) {
+			if(i % 100000 == 0) {
+				System.err.println(".");
+				printedDot = true;
+			}
+			else if(i % 1000 == 0) {
 				System.err.print(".");
 				printedDot = true;
 			}
@@ -421,7 +425,11 @@ public class ViterbiTagger {
 		// for all datum in test:
 		boolean printedDot = false;
 		for (int i = rawData.size() - 1; i > 0; i--) {
-			if(i % 1000 == 0) {
+			if(i % 100000 == 0) {
+				System.err.println(".");
+				printedDot = true;
+			}
+			else if(i % 1000 == 0) {
 				System.err.print(".");
 				printedDot = true;
 			}
@@ -494,7 +502,14 @@ public class ViterbiTagger {
 						// update count of transmission from poss tag to prev poss tag
 						// p = arc prob = p(tag | prev tag) * p(word | tag)
 						// alpha(prev tag) * p(tag | prev tag) * beta(tag) * p(word | tag) / S 
-						tdTrain.incrementNewObservedTransmissionCount(possibleTag, prevPossibleTag, pBigram);
+						try {
+							tdTrain.incrementNewObservedTransmissionCount(possibleTag, prevPossibleTag, pBigram);
+						}
+						catch(NullPointerException ex) {
+							System.err.printf("uh oh! transmission count not initalized for:%s->%s\n",
+									TagDict.getTagFromKey(possibleTag), TagDict.getTagFromKey(prevPossibleTag));
+							throw ex;
+						}
 						
 						// ..to get this we divide pbigram / punigram
 						Probability current = pBigram.divide(pUnigram);
@@ -717,6 +732,7 @@ public class ViterbiTagger {
 					}
 				}
 				else {
+					System.out.println("novel word:"+datum[0]);
 					// novel
 					totalNovelWords++;
 					if(obsPrevTag == prevTag) {
