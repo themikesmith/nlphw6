@@ -1062,6 +1062,7 @@ public class TagDict {
 //				getTagFromKey(possibleTag), getWordFromKey(wordKey), pUnigram);
 		String key = makeKey(wordKey, possibleTag);
 		if(!countWordTagNew.containsKey(key)) {
+			System.out.printf("novel new emission:%s->%s\n", getTagFromKey(possibleTag), getWordFromKey(wordKey));
 			countWordTagNew.put(key, Probability.ZERO);
 		}
 		countWordTagNew.put(key, countWordTagNew.get(key).add(pUnigram));
@@ -1079,6 +1080,7 @@ public class TagDict {
 //				getTagFromKey(prevPossibleTag), getTagFromKey(possibleTag), pBigram);
 		String key = makeKey(possibleTag, prevPossibleTag);
 		if(!countTagPrevTagNew.containsKey(key)) {
+			System.out.printf("novel new transmission:%s->%s\n", getTagFromKey(prevPossibleTag), getTagFromKey(possibleTag));
 			countTagPrevTagNew.put(key, Probability.ZERO);
 		}
 		countTagPrevTagNew.put(key, countTagPrevTagNew.get(key).add(pBigram));
@@ -1107,6 +1109,7 @@ public class TagDict {
 		String key = makeKey(getKeyFromWord(word));
 //		System.out.printf("incrementing new word count: word:%s c:%s\n", word, Probability.ONE);
 		if(!countWordNew.containsKey(key)) {
+			System.out.println("novel new word:"+word);
 			countWordNew.put(key, Probability.ZERO);
 		}
 		countWordNew.put(key, countWordNew.get(key).add(Probability.ONE));

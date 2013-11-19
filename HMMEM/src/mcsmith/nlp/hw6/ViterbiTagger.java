@@ -732,7 +732,6 @@ public class ViterbiTagger {
 					}
 				}
 				else {
-					System.out.println("novel word:"+datum[0]);
 					// novel
 					totalNovelWords++;
 					if(obsPrevTag == prevTag) {
