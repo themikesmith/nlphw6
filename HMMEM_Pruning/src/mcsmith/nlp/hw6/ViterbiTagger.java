@@ -11,6 +11,8 @@ import java.util.Map;
 
 public class ViterbiTagger {
 	public static final String WORD_TAG_DELIMITER = "/";
+	public static final Probability SUPER_AGGRESSIVE_THRESHOLD = new Probability(Math.pow(10, -100));
+	public static final Probability AGGRESSIVE_THRESHOLD = new Probability(Math.pow(10, -50));
 	private boolean debugMode;
 	/**
 	 * Stores our training data
@@ -416,7 +418,10 @@ public class ViterbiTagger {
 						// get current best and compare
 						Probability currentBest = stateValues.get(currentKey);
 						if(currentBest == null) currentBest = Probability.ZERO;
-						if(mu.getLogProb() >= currentBest.getLogProb()) {
+						Probability threshold = SUPER_AGGRESSIVE_THRESHOLD;
+						if(!pruningLevel) threshold = AGGRESSIVE_THRESHOLD;
+						if(mu.getLogProb() >= currentBest.getLogProb()
+								&& mu.getLogProb() >= threshold.getLogProb()) {
 							// we have a new max!
 							stateValues.put(currentKey, mu);
 							// and store back pointer
