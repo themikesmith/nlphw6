@@ -369,6 +369,8 @@ public class ViterbiTagger {
 		// for int i = 1 to n (ranges over all test data(
 		// key = tag,time
 		Map<String, Probability> stateValues = forwardValues;
+		Probability threshold = SUPER_AGGRESSIVE_THRESHOLD;
+		if(!pruningLevel) threshold = AGGRESSIVE_THRESHOLD;
 		// for all datum in test:
 		boolean printedDot = false;
 		for (int i = 1; i < testData.size(); i++) {
@@ -390,10 +392,8 @@ public class ViterbiTagger {
 				String currentKey = TagDict.makeKey(possibleTag, i);
 				Probability currentAlpha = stateValues.get(currentKey);
 				if(currentAlpha == null) currentAlpha = Probability.ZERO;
-				Probability threshold = SUPER_AGGRESSIVE_THRESHOLD;
-				if(!pruningLevel) threshold = AGGRESSIVE_THRESHOLD;
 				if(currentAlpha.getLogProb() < threshold.getLogProb()) {
-					continue; // prune
+					continue; // prune, don't consider this, as it can only get smaller
 				}
 				// for each possible tag of the previous datum...
 				for(int prevPossibleTag : tdTrain.getTagDictForWord(prevWordKey)) {
@@ -437,6 +437,8 @@ public class ViterbiTagger {
 	private void runBackwardPass(List<String> rawData, boolean useSumProduct) {
 		// for int i = 1 to n (ranges over all test data(
 		// key = tag,time
+		Probability threshold = SUPER_AGGRESSIVE_THRESHOLD;
+		if(!pruningLevel) threshold = AGGRESSIVE_THRESHOLD;
 		// for all datum in test:
 		boolean printedDot = false;
 		for (int i = rawData.size() - 1; i > 0; i--) {
@@ -466,11 +468,18 @@ public class ViterbiTagger {
 				// = alpha (t, i) * beta (t,i) / S
 				Probability alphaTI = forwardValues.get(currentKey);
 				if(alphaTI == null) alphaTI = Probability.ZERO;
-				if(alphaTI == Probability.ZERO) {
+				if(alphaTI.getLogProb() == Double.NEGATIVE_INFINITY
+						|| alphaTI.getLogProb() < threshold.getLogProb() ) {
 					// prune!
 					continue;
 				}
 				Probability betaTI = backwardValues.get(currentKey);
+				if(betaTI == null) betaTI = Probability.ZERO;
+				if(betaTI.getLogProb() == Double.NEGATIVE_INFINITY
+						|| betaTI.getLogProb() < threshold.getLogProb() ) {
+					// prune!
+					continue;
+				}
 				String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), rawData.size()-1);
 				Probability S = forwardValues.get(endKey);
 				if(S == null) S = Probability.ZERO;
