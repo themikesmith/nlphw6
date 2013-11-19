@@ -547,14 +547,14 @@ public class TagDict {
 			addPossibleTagForWord(word, tag); // add once
 			if(debugMode) {
 				List<Integer> tagsForWord = wordTagDictionary.get(makeKey(word));
-//				System.out.println("tag dict now:");
-//				System.out.printf("%d -> ",word);
-//				System.out.println(tagsForWord.toString());
-//				System.out.printf("aka:\n %s -> [", getWordFromKey(word));
-//				for(int i : tagsForWord) {
-//					System.out.printf("%s, ",getTagFromKey(i));
-//				}
-//				System.out.println("]");
+				System.out.println("tag dict now:");
+				System.out.printf("%d -> ",word);
+				System.out.println(tagsForWord.toString());
+				System.out.printf("aka:\n %s -> [", getWordFromKey(word));
+				for(int i : tagsForWord) {
+					System.out.printf("%s, ",getTagFromKey(i));
+				}
+				System.out.println("]");
 			}
 		}
 		countWordTag.put(key, countWordTag.get(key).add(Probability.ONE));
