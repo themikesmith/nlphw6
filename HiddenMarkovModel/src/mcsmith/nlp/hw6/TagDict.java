@@ -685,28 +685,28 @@ public class TagDict {
 //			Probability lambda = new Probability(0);
 			Probability lambda = new Probability(Math.pow(10, -100));
 //			Probability lambda = new Probability(1);
-			if(debugMode) System.out.println("lambda:"+lambda);
+//			if(debugMode) System.out.println("lambda:"+lambda);
 			// lambda = count of singletons of prev tag
-			if(debugMode) System.out.printf("singleton tag count for %s:%s\n", getTagFromKey(prevTag), getSingletonTagPrevTagCount(prevTag));
+//			if(debugMode) System.out.printf("singleton tag count for %s:%s\n", getTagFromKey(prevTag), getSingletonTagPrevTagCount(prevTag));
 			lambda = lambda.add(new Probability(getSingletonTagPrevTagCount(prevTag)));
-			if(debugMode) System.out.println("lambda = lambda + singleton count\nlambda:"+lambda);
+//			if(debugMode) System.out.println("lambda = lambda + singleton count\nlambda:"+lambda);
 			// p backoff = p unsmoothed = (count (tag)) / (n)
 			Probability n = new Probability(numberTagTokens);
 //			Probability n = new Probability(numberTagTokens - 1);
 			Probability pttBackoff = new Probability(getTagContextCount(tag));
-			if(debugMode) System.out.printf("count(%s):%s\n",getTagFromKey(tag), pttBackoff);
-			if(debugMode) System.out.printf("n:%s\n",n);
+//			if(debugMode) System.out.printf("count(%s):%s\n",getTagFromKey(tag), pttBackoff);
+//			if(debugMode) System.out.printf("n:%s\n",n);
 			pttBackoff = pttBackoff.divide(n);
-			if(debugMode) System.out.printf("pttbackoff:%s\n", pttBackoff);
+//			if(debugMode) System.out.printf("pttbackoff:%s\n", pttBackoff);
 			// p = (count(tag, prevtag) + lambda * pttbackoff) / (count(prevtag) + lambda)
 			Probability numerator = lambda.product(pttBackoff);
-			if(debugMode) System.out.println("lambda * backoff:"+numerator);
-			if(debugMode) System.out.println("c(tag,prevtag):"+new Probability(getTransmissionCount(tag, prevTag)));
+//			if(debugMode) System.out.println("lambda * backoff:"+numerator);
+//			if(debugMode) System.out.println("c(tag,prevtag):"+new Probability(getTransmissionCount(tag, prevTag)));
 			numerator = numerator.add(new Probability(getTransmissionCount(tag, prevTag)));
-			if(debugMode) System.out.println("c(tag,prevtag) + lambda * backoff:"+numerator);
+//			if(debugMode) System.out.println("c(tag,prevtag) + lambda * backoff:"+numerator);
 			Probability denominator = lambda.add(new Probability(getTagContextCount(prevTag)));
-			if(debugMode) System.out.println("lambda + count(prevTag):"+denominator);
-			if(debugMode) System.out.println("p(backoff) = "+numerator.divide(denominator));
+//			if(debugMode) System.out.println("lambda + count(prevTag):"+denominator);
+			if(debugMode) System.out.println(" = "+numerator.divide(denominator));
 			return numerator.divide(denominator);
 		}
 		else {
@@ -729,11 +729,11 @@ public class TagDict {
 //			Probability lambda = new Probability(0);
 			Probability lambda = new Probability(Math.pow(10, -100));
 //			Probability lambda = new Probability(1);
-			if(debugMode) System.out.println("lambda:"+lambda);
+//			if(debugMode) System.out.println("lambda:"+lambda);
 			// lambda = singleton count - backoff proportional to the open-ness of a tag class
-			if(debugMode) System.out.printf("singleton word count for %s:%s\n", getTagFromKey(tag), new Probability(getSingletonWordTagCount(tag)));
+//			if(debugMode) System.out.printf("singleton word count for %s:%s\n", getTagFromKey(tag), new Probability(getSingletonWordTagCount(tag)));
 			lambda = lambda.add(new Probability(getSingletonWordTagCount(tag)));
-			if(debugMode) System.out.println("lambda = lambda + singleton count\nlambda:"+lambda);
+//			if(debugMode) System.out.println("lambda = lambda + singleton count\nlambda:"+lambda);
 			if(tag == getKeyFromTag(SENTENCE_BOUNDARY)) {
 				if(debugMode) System.out.println("but set lambda = 0 if "+SENTENCE_BOUNDARY);
 				// force lambda to be 0 if ### so we never smooth
@@ -745,21 +745,21 @@ public class TagDict {
 			int n = numberTagTokens;
 //			int n = numberTagTokens - 1;
 			Probability ptwBackoff = new Probability( getWordCount(word)+1 );
-			if(debugMode) System.out.printf("count(%s):%s\n",getWordFromKey(word), ptwBackoff);
-			if(debugMode) System.out.printf("n:%d V:%d n+V:%d\n",n, getVocabSize(), n+getVocabSize());
+//			if(debugMode) System.out.printf("count(%s):%s\n",getWordFromKey(word), ptwBackoff);
+//			if(debugMode) System.out.printf("n:%d V:%d n+V:%d\n",n, getVocabSize(), n+getVocabSize());
 			ptwBackoff = ptwBackoff.divide(new Probability(n + getVocabSize()));
-			if(debugMode) System.out.printf("ptw backoff:%s\n", ptwBackoff);
+//			if(debugMode) System.out.printf("ptw backoff:%s\n", ptwBackoff);
 			// now we have:
 			// (count(word, tag) + lambda * pttbackoff) / (count(tag) + lambda)
 			Probability numerator = lambda.product(ptwBackoff);
-			if(debugMode) System.out.println("lambda times backoff:"+numerator);
-			if(debugMode) System.out.println("c(word,tag):"+new Probability(getEmissionCount(word, tag)));
+//			if(debugMode) System.out.println("lambda times backoff:"+numerator);
+//			if(debugMode) System.out.println("c(word,tag):"+new Probability(getEmissionCount(word, tag)));
 			numerator = numerator.add(new Probability(getEmissionCount(word, tag)));
-			if(debugMode) System.out.println("c(word,tag) + lambda times backoff:"+numerator);
+//			if(debugMode) System.out.println("c(word,tag) + lambda times backoff:"+numerator);
 			Probability denominator = new Probability(getTagContextCount(tag));
 			denominator = denominator.add(lambda);
-			if(debugMode) System.out.println("count(tag) + lambda:"+denominator);
-			if(debugMode) System.out.println("p(backoff) = "+numerator.divide(denominator));
+//			if(debugMode) System.out.println("count(tag) + lambda:"+denominator);
+			if(debugMode) System.out.println(" = "+numerator.divide(denominator));
 			return numerator.divide(denominator);
 		}
 		else if(smoother.equals(SMOOTHING.add1)) {
