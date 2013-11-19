@@ -115,7 +115,7 @@ public class ViterbiTagger {
 		// and save counts in original
 		tdTrain.setOriginalCountsToCurrent();
 		// modified for ic data set - original = 0
-		tdTrain.setOriginalCountsToZero();
+//		tdTrain.setOriginalCountsToZero();
 	}
 	private ArrayList<String> readTestData(TagDict td, String testFilename) throws IOException {
 		if(debugMode) System.out.println("reading test file from:"+testFilename);
