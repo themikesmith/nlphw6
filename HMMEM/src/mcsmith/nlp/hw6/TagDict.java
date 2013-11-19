@@ -1047,8 +1047,8 @@ public class TagDict {
 		countTagPrevTagOriginal = new HashMap<String, Probability>(countTagPrevTag);
 		countWordOriginal = new HashMap<String, Probability>(countWord);
 		countWordTagOriginal = new HashMap<String, Probability>(countWordTag);
-		numberTagTokensOriginal = numberTagTokensNew;
-		numberWordTagTokensOriginal = numberWordTagTokensNew;
+		numberTagTokensOriginal = numberTagTokens;
+		numberWordTagTokensOriginal = numberWordTagTokens;
 	}
 	/**
 	 * Adds the probabilistic emission count specified
@@ -1098,10 +1098,18 @@ public class TagDict {
 	 */
 	public void incrementNewCountOfWord(String word) {
 		String key = makeKey(getKeyFromWord(word));
-//		System.out.printf("incrementing new word count: word:%s c:%s\n", 
-//				word, Probability.ONE);
-		countWordNew.put(key, countWordNew.get(key).add(new Probability(1)));
+//		System.out.printf("incrementing new word count: word:%s c:%s\n", word, Probability.ONE);
+		countWordNew.put(key, countWordNew.get(key).add(Probability.ONE));
 		// will throw null pointer - make sure we init correctly
+	}
+	public Map<String, Probability> getCountWordNew() {
+		return countWordNew;
+	}
+	public Map<String, Probability> getCountWord() {
+		return countWord;
+	}
+	public Map<String, Probability> getCountWordOriginal() {
+		return countWordOriginal;
 	}
 	public void printOriginalCounts() {
 		System.out.println("\n==== Original Counts ====\n");

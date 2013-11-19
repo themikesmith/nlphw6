@@ -57,11 +57,7 @@ public class VTag {
 				// then, using raw data, re-estimate training counts with forward backward EM
 				vtag.test(true);
 				// run viterbi on test data
-				double accuracy = vtag.test(false);
-				if(accuracy == 1) {
-					// stop prematurely.
-//					break;
-				}
+				vtag.test(false);
 			}
 		} catch (IOException e) {
 			System.err.println("error testing!\n");
