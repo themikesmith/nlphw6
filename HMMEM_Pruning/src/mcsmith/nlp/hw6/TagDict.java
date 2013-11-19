@@ -1108,7 +1108,9 @@ public class TagDict {
 		String key = makeKey(prevPossibleTag);
 //		System.out.printf("incrementing new tag context count: -> %s c:%s\n", 
 //				getTagFromKey(prevPossibleTag), current);
-		// don't init - we should always have seen this tag first.
+		if(!countPrevTagNew.containsKey(key)) {
+			countPrevTagNew.put(key, Probability.ZERO);
+		}
 		countPrevTagNew.put(key, countPrevTagNew.get(key).add(current));
 		// will throw null pointer - make sure we init correctly
 	}
