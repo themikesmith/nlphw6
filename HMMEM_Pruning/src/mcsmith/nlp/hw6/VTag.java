@@ -13,8 +13,10 @@ public class VTag {
 				"arg[0] = training_file\n" +
 				"arg[1] = test_file\n" +
 				"arg[2] = raw_file\n" +
-				"Defaults to off, but one may specify an optional 4th argument:\n" +
-				" arg[3] = -d to enable debug mode.");
+				"Defaults to super aggresive, but one may specify an optional 4th argument:\n" +
+				" arg[3] = -a to reduce aggression mode, or -aa to keep it super aggressive." + 
+				"Defaults to off, but one may specify an optional 5th argument:\n" +
+				" arg[4] = -d to enable debug mode.");
 		System.err.printf("\nyou submitted:\n");
 		for(String s : args) System.err.printf("%s\n",s);
 	}
@@ -25,14 +27,24 @@ public class VTag {
 			usage(args);
 			return;
 		}
-		boolean debugMode = false;
+		boolean debugMode = false, superAggresive = true;
 		if (args.length > 3) { // check our optional arguments.
 			// check the 4th argument
-			if (args[3].equals("-d")) {
-				debugMode = true;
+			if (args[3].equals("-a")) {
+				superAggresive = false;
+			} else if(args[3].equals("-aa")) {
+				superAggresive = true;
 			} else {
 				usage(args);
 				return;
+			}
+			if(args.length > 4) {
+				if (args[4].equals("-d")) {
+					debugMode = true;
+				} else {
+					usage(args);
+					return;
+				}
 			}
 		}
 		// now that we have our arguments...
@@ -48,6 +60,7 @@ public class VTag {
 		}
 		try {
 			vtag.prepareToTest(args[1], args[2]);
+			vtag.setPruningLevel(superAggresive);
 			// run viterbi on test data
 			vtag.test(false);
 			// for this many iterations....

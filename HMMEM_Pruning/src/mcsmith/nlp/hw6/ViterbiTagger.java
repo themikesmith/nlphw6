@@ -44,6 +44,7 @@ public class ViterbiTagger {
 	private Map<String, Probability> backwardValues;
 	private ArrayList<String> testData;
 	private ArrayList<String> rawData;
+	private boolean pruningLevel;
 	/**
 	 * Constructor
 	 */
@@ -55,6 +56,7 @@ public class ViterbiTagger {
 		debugMode = false;
 		backpointers = new HashMap<String, Integer>();
 		backwardValues = new HashMap<String, Probability>();
+		pruningLevel = true;
 	}
 	public void prepareToTest(String testFilename, String rawFilename) throws IOException {
 		testData = readTestData(tdTest, testFilename);
@@ -391,22 +393,29 @@ public class ViterbiTagger {
 					Probability arcProb = tdTrain.getSmoothedProbTagGivenPrevTag(possibleTag, prevPossibleTag);
 					arcProb = arcProb.product(tdTrain.getSmoothedProbWordGivenTag(wordKey, possibleTag));
 					if(debugMode) System.out.println("arcprob:"+arcProb);
-					if(useSumProduct) {
+					if(useSumProduct && !pruningLevel) {
+						// we prune on the backward pass...
 						// alpha[t][i] = alpha[t][i] + (alpha[t-1][i-1] * arc prob
 						String prevKey = TagDict.makeKey(prevPossibleTag, i-1);
 						Probability prevAlpha = stateValues.get(prevKey);
+						if(prevAlpha == null) prevAlpha = Probability.ZERO;
 						Probability summand = prevAlpha.product(arcProb);
 						// get current value
 						Probability currentAlpha = stateValues.get(currentKey);
+						if(currentAlpha == null) currentAlpha = Probability.ZERO;
 						// and add values
 						stateValues.put(currentKey, currentAlpha.add(summand));
 					}
 					else {
+						// take max if super aggressive forward backward pruning, or viterbi
 						// mu = mu t-1 (i-1) * arc prob
-						Probability prevBest = stateValues.get(TagDict.makeKey(prevPossibleTag, i-1));
+						String prevKey = TagDict.makeKey(prevPossibleTag, i-1);
+						Probability prevBest = stateValues.get(prevKey);
+						if(prevBest == null) prevBest = Probability.ZERO;
 						Probability mu = prevBest.product(arcProb);
 						// get current best and compare
 						Probability currentBest = stateValues.get(currentKey);
+						if(currentBest == null) currentBest = Probability.ZERO;
 						if(mu.getLogProb() >= currentBest.getLogProb()) {
 							// we have a new max!
 							stateValues.put(currentKey, mu);
@@ -449,9 +458,11 @@ public class ViterbiTagger {
 //				System.out.println("p(t_i | w) = alpha[t,i] * beta[t,i] / S");
 				// = alpha (t, i) * beta (t,i) / S
 				Probability alphaTI = forwardValues.get(currentKey);
+				if(alphaTI == null) alphaTI = Probability.ZERO;
 				Probability betaTI = backwardValues.get(currentKey);
 				String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), rawData.size()-1);
 				Probability S = forwardValues.get(endKey);
+				if(S == null) S = Probability.ZERO;
 //				if(debugMode) System.out.printf("alpha[t,i]=%s beta[t,i]=%s S=%s\n", alphaTI, betaTI, S);
 				// punigram means we have seen the unigram probabilistically that many times
 				Probability pUnigram = alphaTI.product(betaTI).divide(S);
@@ -466,7 +477,7 @@ public class ViterbiTagger {
 				tdTrain.incrementNewObservedEmissionCount(wordKey, possibleTag, pUnigram);
 				
 				// max probability we've found
-				Probability maxProbFound = new Probability(0);
+				Probability maxProbFound = Probability.ZERO;
 				// and prev tag that produced it
 				int bestPrevTag = -1;
 				// for each possible tag of the previous datum...
@@ -483,9 +494,11 @@ public class ViterbiTagger {
 						// beta[t-1][i-1] = beta[t-1][i-1] + beta[t][i] * arc prob
 						String prevKey = TagDict.makeKey(prevPossibleTag, i-1);
 						Probability prevValue = backwardValues.get(prevKey);
+						if(prevValue == null)prevValue = Probability.ZERO;
 //						if(debugMode) System.out.printf("beta[t-1,i-1]:%s\n", prevValue);
 						// get current value
 						Probability currentValue = backwardValues.get(currentKey);
+						if(currentValue == null) currentValue = Probability.ZERO;
 //						if(debugMode) System.out.printf("beta[t,i]:%s\n", currentValue);
 //						if(debugMode) System.out.printf("arcprob:%s\n", arcProb);
 						Probability summand = currentValue.product(arcProb);
@@ -497,6 +510,7 @@ public class ViterbiTagger {
 						// = alpha (t-1, i-1) * p * beta (t,i) / S
 //						System.out.println("p([t-1, i-1] ^ t_i | w) = alpha[t-1, i-1] * p * beta[t,i] / S");
 						Probability prevAlpha = forwardValues.get(prevKey);
+						if(prevAlpha == null) prevAlpha = Probability.ZERO;
 //						if(debugMode) System.out.printf("alpha[t-1, i-1 : %s]=%s p=%s beta[t,i : %s]=%s S=%s\n", prevKey, prevAlpha, arcProb, currentKey, betaTI, S);
 						Probability pBigram = prevAlpha.product(arcProb).product(betaTI).divide(S);
 						// update count of transmission from poss tag to prev poss tag
@@ -510,9 +524,9 @@ public class ViterbiTagger {
 									TagDict.getTagFromKey(possibleTag), TagDict.getTagFromKey(prevPossibleTag));
 							throw ex;
 						}
-						
 						// ..to get this we divide pbigram / punigram
 						Probability current = pBigram.divide(pUnigram);
+						if(pUnigram.equals(Probability.ZERO)) current = Probability.ZERO;
 						// track result with backpointers
 						if(current.getLogProb() > maxProbFound.getLogProb()) {
 //							if(debugMode) System.out.println("found new best!");
@@ -530,8 +544,8 @@ public class ViterbiTagger {
 					}
 				}
 				if(bestPrevTag == -1) {
-					System.err.println("\nnever assigned a best!\n");
-					System.out.println("\nnever assigned a best\n");
+//					System.err.println("\nnever assigned a best!\n");
+//					System.out.println("\nnever assigned a best\n");
 				}
 				backpointers.put(currentKey, bestPrevTag);
 			}
@@ -736,7 +750,7 @@ public class ViterbiTagger {
 					}
 				}
 				else {
-					System.out.println("novel word:"+datum[0]);
+//					System.out.println("novel word:"+datum[0]);
 					// novel
 					totalNovelWords++;
 					if(obsPrevTag == prevTag) {
@@ -825,5 +839,8 @@ public class ViterbiTagger {
 			e.printStackTrace();
 		}
 		System.out.println(vtag.getTagDict().toString());
+	}
+	public void setPruningLevel(boolean superAggresive) {
+		this.pruningLevel = superAggresive;
 	}
 }
