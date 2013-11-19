@@ -42,6 +42,8 @@ public class ViterbiTagger {
 	 * stores the max / sum probability of reaching this state 'tag' at time 't' from end 
 	 */
 	private Map<String, Probability> backwardValues;
+	private ArrayList<String> testData;
+	private ArrayList<String> rawData;
 	/**
 	 * Constructor
 	 */
@@ -53,6 +55,10 @@ public class ViterbiTagger {
 		debugMode = false;
 		backpointers = new HashMap<String, Integer>();
 		backwardValues = new HashMap<String, Probability>();
+	}
+	public void prepareToTest(String testFilename, String rawFilename) throws IOException {
+		testData = readTestData(tdTest, testFilename);
+		rawData = readRawData(tdRaw, rawFilename);
 	}
 	/**
 	 * Assembles our training counts from the trainin file.
@@ -84,7 +90,7 @@ public class ViterbiTagger {
 //			if(debugMode) System.out.println(": "+line);
 			// ensure we have these in our tag dictionary
 			TagDict.addTagToDict(tag);
-			TagDict.addWordToDict(word);
+			TagDict.addWordToDict(word, false);
 			// and increment the appropriate counts
 			int tagKey = TagDict.getKeyFromTag(tag), wordKey = TagDict.getKeyFromWord(word);
 //			if(debugMode) System.out.printf("word:%s tag:%s prevTag:%s\n", word, tag, TagDict.getTagFromKey(prevTagKey));
@@ -107,7 +113,9 @@ public class ViterbiTagger {
 		if(debugMode) System.out.println("number word tag tokens:"+tdTrain.getNumberWordTagTokens());
 		br.close();
 		// and save counts in original
-		tdTrain.saveCurrentCountsToOriginal();
+		tdTrain.setOriginalCountsToCurrent();
+		// modified for ic data set - original = 0
+		tdTrain.setOriginalCountsToZero();
 	}
 	private ArrayList<String> readTestData(TagDict td, String testFilename) throws IOException {
 		if(debugMode) System.out.println("reading test file from:"+testFilename);
@@ -123,8 +131,8 @@ public class ViterbiTagger {
 			}
 			// process line. - increase vocab size if necessary
 			String word = wordTag[0];
-			if (debugMode) System.out.println(": " + line);
-			TagDict.addWordToDict(word);
+//			if (debugMode) System.out.println(": " + line);
+			TagDict.addWordToDict(word, true);
 			td.initWordCounter(word);
 			// read test data into memory
 			testData.add(line);
@@ -145,9 +153,13 @@ public class ViterbiTagger {
 				// good. no tags should be found
 				// process line. - increase vocab size if necessary
 				String word = wordTag[0];
-				if (debugMode) System.out.println(": " + line);
-				TagDict.addWordToDict(word);
+//				if (debugMode) System.out.println(": " + line);
+				TagDict.addWordToDict(word, false);
 				td.initWordCounter(word);
+				tdTrain.incrementNumberTagTokensNew();
+				tdTrain.incrementNumberTaggedWordTokensNew();
+//				tdTrain.incrementNumberTagTokens();
+//				tdTrain.incrementNumberTaggedWordTokens();
 				// read raw data into memory
 				rawData.add(line);
 			}
@@ -160,7 +172,8 @@ public class ViterbiTagger {
 		if(debugMode) System.out.println("vocab size:"+TagDict.getVocabSize());
 		return rawData;
 	}
-	public void testViterbi(ArrayList<String> testData) {
+	public double testViterbi(ArrayList<String> testData) {
+		if (debugMode) System.out.println("viterbi!");
 		// we use backpointers to store the tag with the max probability at each step
 		backpointers.clear();
 		// viterbi
@@ -171,24 +184,33 @@ public class ViterbiTagger {
 			printData(testData, forwardValues);
 		}
 		// follow back pointers and compare to our given test data
-		int[] result = getCompareResultFromBackpointers(testData, false, backpointers);
-		if (debugMode) {
+		if(debugMode) {
+			int[] result = getCompareResultFromBackpointers(testData, false, backpointers);
 			System.out.printf("viterbi produced this tagging!\n");
 			for (int i = 2; i < result.length; i++) {
 				System.out.printf("i:%d tag:%s\n", i - 1,
 						TagDict.getTagFromKey(result[i]));
 			}
+			return -1;
+		}
+		else {
+			return getAccuracyResultTagging(testData, false, backpointers);
 		}
 	}
 
 	private void reEstimateTrainingCountsFromRaw(ArrayList<String> rawData) {
+		if (debugMode) System.out.println("forward/backward!");
 		backpointers.clear();
 		// we use 'current' counts while running the algorithm
 		// but we update the 'new' counts based on these current counts
-		// need to init 'new'
+		if (debugMode) tdTrain.printOriginalCounts();
+		// new = original
+		if (debugMode) System.out.println("init new counts with train counts");
 		tdTrain.setNewCountsToOriginal();
 		// forward backward - forward pass
 		initializeForward(rawData);
+		if (debugMode) System.out.println("current counts and probabilities:");
+		if (debugMode) System.out.println(tdTrain.toString());
 		runPass(rawData, true, true);
 		if (debugMode) {
 			System.out.println("\nafter forward pass!\n");
@@ -208,26 +230,36 @@ public class ViterbiTagger {
 			System.out.println("\nafter backward pass!\n");
 			printData(rawData, backwardValues);
 		}
-		int[] result = getCompareResultFromBackpointers(rawData, true, backpointers);
-		if (debugMode) {
-			System.out.printf("forward-backward produced this tagging!\n");
-			for (int i = 2; i < result.length; i++) {
-				System.out.printf("i:%d tag:%s\n", i - 1,
-						TagDict.getTagFromKey(result[i]));
-			}
-		}
+		// print perplexity per untagged word:
+		double nNew = new Double(rawData.size()-1);
+		tdTrain.setNumberTagTokensNew(nNew);
+		tdTrain.setNumberWordTagTokensNew(nNew);
+		System.out.printf("Perplexity per untagged raw word:%s\n",getPerplexityPerTaggedWord(S, rawData.size()-1));
 		// and now that we're finished, we set the 'new' counts computed in this iteration 
 		// to 'current' for the next
+		if (debugMode) System.out.println("new holds train + raw counts:");
+		if (debugMode) tdTrain.printNewCounts();
+		if (debugMode) tdTrain.printCurrentCounts();
+		// current = new
 		tdTrain.setCurrentCountsToNew();
+		tdTrain.setNumberTagTokens(tdTrain.getNumberTagTokens() + nNew);
+		tdTrain.setNumberWordTagTokens(tdTrain.getNumberWordTagTokens() + nNew);
+		if (debugMode) System.out.println("current counts and probabilities:");
+		if (debugMode) System.out.println(tdTrain.toString());
 	}
-	public void test(String testFilename, boolean useSumProduct) throws IOException {
-		ArrayList<String> testData = readTestData(tdTest, testFilename);
+	/**
+	 * 
+	 * @param useSumProduct
+	 * @return the tagging accuracy if viterbi, or -1 if reestimating
+	 * @throws IOException
+	 */
+	public double test(boolean useSumProduct) throws IOException {
 		if(!useSumProduct) {
-			testViterbi(testData);
+			return testViterbi(testData);
 		}
 		else {
-			ArrayList<String> rawData = readRawData(tdRaw, testFilename);
 			reEstimateTrainingCountsFromRaw(rawData);
+			return -1;
 		}
 	}
 
@@ -263,13 +295,13 @@ public class ViterbiTagger {
 		// for all datum in test:
 		for (int i = 1; i < rawData.size(); i++) {
 			String datum = rawData.get(i);
-			if(debugMode) System.out.printf("i:%d data:%s\n", i, datum);
+//			if(debugMode) System.out.printf("i:%d data:%s\n", i, datum);
 			String[] split = datum.split(WORD_TAG_DELIMITER);
 			String word = split[0];
 			int wordKey = TagDict.getKeyFromWord(word);
 			// for each possible tag of this datum, we have one state.
 			for(int possibleTag : tdTrain.getTagDictForWord(wordKey)) {
-				if(debugMode) System.out.printf("possible tag:%d aka %s word:%s\n", possibleTag, TagDict.getTagFromKey(possibleTag), word);
+//				if(debugMode) System.out.printf("possible tag:%d aka %s word:%s\n", possibleTag, TagDict.getTagFromKey(possibleTag), word);
 				String stateKey = TagDict.makeKey(possibleTag, i);
 				// initialize all states with value specified
 				forwardValues.put(stateKey, new Probability(0));
@@ -287,7 +319,6 @@ public class ViterbiTagger {
 		String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), rawData.size()-1);
 		backwardValues.put(endKey, new Probability(1));
 		// ... and all other states at 0
-		
 		// for all datum in test:
 		for (int i = rawData.size() - 2; i >= 0; i--) {
 			String datum = rawData.get(i);
@@ -385,17 +416,27 @@ public class ViterbiTagger {
 			// for each possible tag of this datum, we have one state.
 			for(int possibleTag : tdTrain.getTagDictForWord(wordKey)) {
 				String currentKey = TagDict.makeKey(possibleTag, i);
+				if(debugMode) System.out.printf("\ni:%d word:%s possTag:%s\n",i, word,TagDict.getTagFromKey(possibleTag));
 				// ... we can compute unigram probability p(t i | w)
-				// = alpha (t, i) * beta (t,i) * S
+//				System.out.println("p(t_i | w) = alpha[t,i] * beta[t,i] / S");
+				// = alpha (t, i) * beta (t,i) / S
 				Probability alphaTI = forwardValues.get(currentKey);
 				Probability betaTI = backwardValues.get(currentKey);
 				String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);
 				Probability S = forwardValues.get(endKey);
-				//TODO do we compare and find the tag with the max p-unigram?
-				Probability pUnigram = alphaTI.product(betaTI).product(S);
+//				if(debugMode) System.out.printf("alpha[t,i]=%s beta[t,i]=%s S=%s\n", alphaTI, betaTI, S);
 				// punigram means we have seen the unigram probabilistically that many times
-				// update new counts
+				Probability pUnigram = alphaTI.product(betaTI).divide(S);
+				
+				// update count of this possible tag
+				// p(-> possible tag) = alpha(tag) * beta(tag) / S
+//				System.out.printf("p(->%s)= %s\n", TagDict.getTagFromKey(possibleTag), pUnigram);
+				// and update count of seeing the context of possible tag
+				tdTrain.incrementNewTimesSeenTagContext(possibleTag, pUnigram);
+				
+				// and update expected count of emission
 				tdTrain.incrementNewObservedEmissionCount(wordKey, possibleTag, pUnigram);
+				
 				// max probability we've found
 				Probability maxProbFound = new Probability(0);
 				// and prev tag that produced it
@@ -403,40 +444,49 @@ public class ViterbiTagger {
 				// for each possible tag of the previous datum...
 				for(int prevPossibleTag : tdTrain.getTagDictForWord(prevWordKey)) {
 					// p = arc prob = p(tag | prev tag) * p(word | tag)
+//					System.out.println("computing arc prob = p(tag | prev tag) * p(word | tag)");
+//					System.out.printf(" = p(%s | %s) * p(%s | %s)\n", 
+//							TagDict.getTagFromKey(possibleTag), TagDict.getTagFromKey(prevPossibleTag),
+//							word, TagDict.getTagFromKey(possibleTag));
 					Probability arcProb = tdTrain.getSmoothedProbTagGivenPrevTag(possibleTag, prevPossibleTag);
 					arcProb = arcProb.product(tdTrain.getSmoothedProbWordGivenTag(wordKey, possibleTag));
 					if(useSumProduct) {
+//						if(debugMode) System.out.printf("\ni:%d i-1:%d prevWord:%s prevPossTag:%s\n", i, i-1, prevWord, TagDict.getTagFromKey(prevPossibleTag));
 						// beta[t-1][i-1] = beta[t-1][i-1] + beta[t][i] * arc prob
 						String prevKey = TagDict.makeKey(prevPossibleTag, i-1);
 						Probability prevValue = backwardValues.get(prevKey);
+//						if(debugMode) System.out.printf("beta[t-1,i-1]:%s\n", prevValue);
 						// get current value
 						Probability currentValue = backwardValues.get(currentKey);
+//						if(debugMode) System.out.printf("beta[t,i]:%s\n", currentValue);
+//						if(debugMode) System.out.printf("arcprob:%s\n", arcProb);
 						Probability summand = currentValue.product(arcProb);
 						// and add values
+//						if(debugMode) System.out.println("beta[t-1][i-1] = beta[t-1][i-1] + (beta[t][i] * arc prob)");
+//						if(debugMode) System.out.printf("beta[t-1,i-1]:%s\n", prevValue.add(summand));
 						backwardValues.put(prevKey, prevValue.add(summand));
 						// ... now we can compute bigram probability p( [t-1, i-1] ^ t i | w)
 						// = alpha (t-1, i-1) * p * beta (t,i) / S
+//						System.out.println("p([t-1, i-1] ^ t_i | w) = alpha[t-1, i-1] * p * beta[t,i] / S");
 						Probability prevAlpha = forwardValues.get(prevKey);
+//						if(debugMode) System.out.printf("alpha[t-1, i-1 : %s]=%s p=%s beta[t,i : %s]=%s S=%s\n", prevKey, prevAlpha, arcProb, currentKey, betaTI, S);
 						Probability pBigram = prevAlpha.product(arcProb).product(betaTI).divide(S);
-						// update counts of transmission
+						// update count of transmission from poss tag to prev poss tag
+						// p = arc prob = p(tag | prev tag) * p(word | tag)
+						// alpha(prev tag) * p(tag | prev tag) * beta(tag) * p(word | tag) / S 
 						tdTrain.incrementNewObservedTransmissionCount(possibleTag, prevPossibleTag, pBigram);
 						
-						//TODO or do we compare and find the tag [t-1,i-1]
-						// with the max p([t-1, i-1] | [t i], w )
 						// ..to get this we divide pbigram / punigram
 						Probability current = pBigram.divide(pUnigram);
-						// and update count of seeing context
-						tdTrain.incrementNewTimesSeenTagContext(prevPossibleTag, current);
-						
 						// track result with backpointers
 						if(current.getLogProb() > maxProbFound.getLogProb()) {
-							if(debugMode) System.out.println("found new best!");
-							if(debugMode) System.out.println("old tag:"+bestPrevTag);
-							if(debugMode) System.out.println("old prob:"+maxProbFound);
+//							if(debugMode) System.out.println("found new best!");
+//							if(debugMode) System.out.println("old tag:"+bestPrevTag);
+//							if(debugMode) System.out.println("old prob:"+maxProbFound);
 							maxProbFound = current;
 							bestPrevTag = prevPossibleTag;
-							if(debugMode) System.out.println("new tag:"+bestPrevTag);
-							if(debugMode) System.out.println("new prob:"+maxProbFound);
+//							if(debugMode) System.out.println("new tag:"+bestPrevTag);
+//							if(debugMode) System.out.println("new prob:"+maxProbFound);
 						}
 					}
 					else {
@@ -486,9 +536,16 @@ public class ViterbiTagger {
 			result[i] = prevTag;
 			// compare:
 			String line = testData.get(i-1);
-			String[] datum = line.split(WORD_TAG_DELIMITER);
+			String[] datum = line.split(WORD_TAG_DELIMITER);			
 			if(datum.length < 2) {
 				System.err.println("error processing test data! couldn't parse delimiter:"+line);
+				StringBuilder sb = new StringBuilder("datum:[");
+				for(int d = 0; d < datum.length; d++) {
+					sb.append(String.format("%s,", datum[d]));
+				}
+				sb.deleteCharAt(sb.length()-1);
+				sb.append("]");
+				System.out.println(sb);
 				return null;
 			}
 			// update counts
@@ -572,6 +629,131 @@ public class ViterbiTagger {
 		return result;
 	}
 	/**
+	 * Given the test data length, and the backpointers map,
+	 * follow backpointers and assemble the best tagging.
+	 * Prints the comparison results at the same time.
+	 * Overall accuracy considers all tokens except ###
+	 * Known-word accuracy considers all words except ### that appears in training data
+	 * Novel-word accuracy considers all words except ### that don't appear in training data
+	 * 
+	 * @param testData
+	 * @param useSumProduct
+	 * @param backpointers a map of (tag, time) -> prev tag backpointers
+	 * @return the
+	 */
+	private Double getAccuracyResultTagging(ArrayList<String> testData, boolean useSumProduct, Map<String, Integer> backpointers) {
+		// init count of correct tags (note we know the number of total tags is N)
+		double totalWords = 0, totalCorrectTags = 0, 
+				totalKnownWords = 0, totalKnownTaggedCorrectly = 0,
+				totalSeenWords = 0, totalSeenTaggedCorrectly = 0,
+				totalNovelWords = 0, totalNovelTaggedCorrectly = 0;
+		// declare array and follow back pointers
+		int[] result = new int[testData.size()];
+		// begin at the ending boundary
+		int currTag = TagDict.getKeyFromTag(TagDict.SENTENCE_BOUNDARY);
+		// from n down to 1 (note n = size - 1)
+		int n = testData.size() - 1;
+		if(debugMode) System.out.println("n:"+n);
+		for (int i = n; i > 0; i--) {
+			// get our previous tag
+			int prevTag = backpointers.get(TagDict.makeKey(currTag, i));
+			// set it in our array to return
+			result[i] = prevTag;
+			// compare:
+			String line = testData.get(i-1);
+			String[] datum = line.split(WORD_TAG_DELIMITER);			
+			if(datum.length < 2) {
+				System.err.println("error processing test data! couldn't parse delimiter:"+line);
+				StringBuilder sb = new StringBuilder("datum:[");
+				for(int d = 0; d < datum.length; d++) {
+					sb.append(String.format("%s,", datum[d]));
+				}
+				sb.deleteCharAt(sb.length()-1);
+				sb.append("]");
+				System.out.println(sb);
+				return null;
+			}
+			// update counts
+			int obsPrevTag = TagDict.getKeyFromTag(datum[1]); // should never be null - we assume we've seen all tags
+			// don't count our sentence boundary
+			if(obsPrevTag != TagDict.getKeyFromTag(TagDict.SENTENCE_BOUNDARY)) {
+				totalWords++;
+				if(obsPrevTag == prevTag) {
+					totalCorrectTags++;
+				}
+				// was the word known? seen while training and while testing
+				if(tdTrain.seenWord(datum[0])) {
+					// known
+					totalKnownWords++;
+					if(obsPrevTag == prevTag) {
+						totalKnownTaggedCorrectly++;
+					}
+				}
+				else if(tdRaw.seenWord(datum[0])) {
+					// seen
+					totalSeenWords++;
+					if(obsPrevTag == prevTag) {
+						totalSeenTaggedCorrectly++;
+					}
+				}
+				else {
+					// novel
+					totalNovelWords++;
+					if(obsPrevTag == prevTag) {
+						totalNovelTaggedCorrectly++;
+					}
+				}
+			}
+			// and continue following
+			currTag = prevTag;
+		}
+		if(debugMode) {
+			System.out.println("num words:"+totalWords);
+			System.out.println("overall correct:"+totalCorrectTags);
+			System.out.println("known correct:"+totalKnownTaggedCorrectly);
+			System.out.println("num known words:"+totalKnownWords);
+			System.out.println("seen correct:"+totalSeenTaggedCorrectly);
+			System.out.println("num seen words:"+totalSeenWords);
+			System.out.println("novel correct:"+totalNovelTaggedCorrectly);
+			System.out.println("num novel words:"+totalNovelWords);
+		}
+		// now that we've got all our counts, compute the accuracy scores
+		// don't count the sentence boundaries when we score
+		double overallAccuracy = totalCorrectTags / totalWords, 
+				knownAccuracy = totalKnownTaggedCorrectly / totalKnownWords,
+				seenAccuracy = totalSeenTaggedCorrectly / totalSeenWords,
+				novelAccuracy = totalNovelTaggedCorrectly / totalNovelWords;
+		if(testData.size() == 0) {
+			overallAccuracy = 0;
+		}
+		if(totalKnownWords == 0) {
+			knownAccuracy = 0;
+		}
+		if(totalSeenWords == 0) {
+			seenAccuracy = 0;
+		}
+		if(totalNovelWords == 0) {
+			novelAccuracy = 0;
+		}
+		String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);
+		Probability finalProb = forwardValues.get(endKey);
+		// and print
+		if(!useSumProduct) {
+			System.out.printf("Tagging accuracy (Viterbi decoding): %.2f%% " +
+					"(known: %.2f%% seen: %.2f%% novel: %.2f%%)\n" +
+					"Perplexity per Viterbi-tagged test word: %.3f\n",
+					overallAccuracy * 100, knownAccuracy * 100, seenAccuracy * 100, novelAccuracy * 100, 
+					getPerplexityPerTaggedWord(finalProb, n));
+		}
+		else {
+			System.out.printf("Tagging accuracy (posterior decoding): %.2f%% " +
+					"(known: %.2f%% seen: %.2f%% novel: %.2f%%)\n",
+					overallAccuracy * 100, knownAccuracy * 100, seenAccuracy * 100, novelAccuracy * 100);
+		}
+		
+		return overallAccuracy;
+	}
+	/**
 	 * Computes exp( -1* log( p(w1, t1, w2, t2, ..., wn, tn | w0, t0) / n) )
 	 * 
 	 * where t0, t1, t2, ..., tn is the winning tag sequence 
@@ -580,19 +762,11 @@ public class ViterbiTagger {
 	 * @return the perplexity per word
 	 */
 	private double getPerplexityPerTaggedWord(Probability prob, double n) {
-		if(debugMode) System.out.println("prob of sequence:"+prob);
-		if(debugMode) System.out.println("logprob of sequence:"+prob.getLogProb());
-		if(debugMode) System.out.println("n:"+n);
-//		double d = Math.exp(prob.getLogProb() / (-1* (n+2)));
-//		System.out.println("perp:"+d);
-//		d = Math.exp(prob.getLogProb() / (-1* (n+1)));
-//		System.out.println("perp:"+d);
-//		d = Math.exp(prob.getLogProb() / (-1* n));
-//		System.out.println("perp:"+d);
-//		d = Math.exp(prob.getLogProb() / (-1* (n-1)));
-//		System.out.println("perp:"+d);
-//		d = Math.exp(prob.getLogProb() / (-1* (n-2)));
-//		System.out.println("perp:"+d);
+		if(debugMode) {
+			System.out.println("prob of sequence:"+prob);
+			System.out.println("logprob of sequence:"+prob.getLogProb());
+			System.out.println("n:"+n);
+		}
 		return Math.exp(prob.getLogProb() / (-1* n));
 	}
 	public TagDict getTagDict() {return tdTrain;}

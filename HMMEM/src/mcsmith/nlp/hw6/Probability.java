@@ -1,6 +1,7 @@
 package mcsmith.nlp.hw6;
 
 public class Probability {
+	public static Probability ONE = new Probability(1), ZERO = new Probability(0), TWO = new Probability(2);
 	private double logprob;
 	public Probability(double prob) {
 		logprob = Math.log(prob);
@@ -21,6 +22,17 @@ public class Probability {
 	}
 	public double getLogProb() {
 		return logprob;
+	}
+	/**
+	 * Two probabilties are equal if their values are equal
+	 */
+	@Override
+	public boolean equals(Object other) {
+		if(other instanceof Probability) {
+			Probability p = (Probability) other;
+			return this.logprob == p.logprob;
+		}
+		return false;
 	}
 	/**
 	 * Returns a new probability containing the maximum probability between this and another

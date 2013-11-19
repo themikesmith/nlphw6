@@ -46,15 +46,22 @@ public class VTag {
 			System.err.println("error training!\n");
 			e.printStackTrace();
 		}
-		// debug train!
-		if(debugMode) System.out.println(vtag.getTagDict().toString());
 		try {
+			vtag.prepareToTest(args[1], args[2]);
+			// run viterbi on test data
+			vtag.test(false);
 			// for this many iterations....
-			for(int i = 0; i < 10; i++) {
-				// run viterbi on test data
-				vtag.test(args[1], false);
+			int maxIterations = 10;
+			for(int i = 0; i < maxIterations; i++) {
+				System.out.printf("\nIteration %d: ",i);
 				// then, using raw data, re-estimate training counts with forward backward EM
-				vtag.test(args[1], true);
+				vtag.test(true);
+				// run viterbi on test data
+				double accuracy = vtag.test(false);
+				if(accuracy == 1) {
+					// stop prematurely.
+					break;
+				}
 			}
 		} catch (IOException e) {
 			System.err.println("error testing!\n");

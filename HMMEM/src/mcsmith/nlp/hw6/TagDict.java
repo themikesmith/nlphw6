@@ -27,15 +27,30 @@ public class TagDict {
 	 * This table stores as keys the plain strings
 	 */
 	private static Set<String> globalVocab = new HashSet<String>();
+	/**
+	 * Table used to store the global vocab.
+	 * this is the training and test and raw vocab.
+	 * 
+	 * This table stores as keys the plain strings
+	 */
+	private static Set<String> vocab = new HashSet<String>();
 	static {
 		globalVocab.add(OOV);
+		vocab.add(OOV);
+	}
+	/**
+	 * 
+	 * @return the size of the global vocab
+	 */
+	public static int getGlobalVocabSize() {
+		return globalVocab.size();
 	}
 	/**
 	 * 
 	 * @return the size of the global vocab
 	 */
 	public static int getVocabSize() {
-		return globalVocab.size();
+		return vocab.size();
 	}
 	/**
 	 * Table for going from words to integer keys.
@@ -58,19 +73,25 @@ public class TagDict {
 	 * Checks for duplicates - will not add a duplicate.
 	 * Stores it in the words to ints, and ints to words tables.
 	 * Increments the next integer to be used as a converter key.
+	 * If the word is not in test data, increment our vocab size for calculations.
 	 * @param word
+	 * @param inTestData
 	 * @return true if changes made, false otherwise
 	 */
-	public static boolean addWordToDict(String word) {
+	public static boolean addWordToDict(String word, boolean inTestData) {
 		if(!wordsToInts.containsKey(word)) {
 			int number = wordsToInts.keySet().size();
 			wordsToInts.put(word, number);
 			intsToWords.put(number, word);
-			if(debugMode) System.out.printf("adding word %d:'%s'\n", number, word);
-			if(debugMode) System.out.printf("num words now:%d\n", intsToWords.keySet().size());
-			if(debugMode) System.out.printf("words now:%s\n", intsToWords);
-			if(debugMode) System.out.printf("ints now:%s\n", wordsToInts);
+			if(debugMode) System.out.printf("adding word to global vocab %d:'%s'\n", number, word);
+//			if(debugMode) System.out.printf("num words now:%d\n", intsToWords.keySet().size());
+//			if(debugMode) System.out.printf("words now:%s\n", intsToWords);
+//			if(debugMode) System.out.printf("ints now:%s\n", wordsToInts);
 			globalVocab.add(word);
+			if(!inTestData) {
+				vocab.add(word);
+				if(debugMode) System.out.printf("adding word to vocab %d:'%s'\n", number, word);
+			}
 			return true;
 		}
 		return false;
@@ -87,9 +108,9 @@ public class TagDict {
 			int number = tagsToInts.keySet().size();
 			tagsToInts.put(tag, number);
 			intsToTags.put(number, tag);
-			if(debugMode) System.out.printf("adding tag %d:'%s'\n", number, tag);
-			if(debugMode) System.out.printf("num tags now:%d\n", intsToTags.keySet().size());
-			if(debugMode) System.out.printf("tags now:%s\n", intsToTags);
+//			if(debugMode) System.out.printf("adding tag %d:'%s'\n", number, tag);
+//			if(debugMode) System.out.printf("num tags now:%d\n", intsToTags.keySet().size());
+//			if(debugMode) System.out.printf("tags now:%s\n", intsToTags);
 		}
 	}
 	/**
@@ -203,7 +224,7 @@ public class TagDict {
 	 * 
 	 * Stores number of tag tokens
 	 */
-	private int numberTagTokens;
+	private double numberTagTokens;
 	private double numberTagTokensOriginal;
 	private double numberTagTokensNew;
 	/**
@@ -218,7 +239,7 @@ public class TagDict {
 	 * This table stores as keys the integer keys for 'tag t, tag t-1' 
 	 * and as values the number of times we observed the first tag to follow the second.
 	 */
-	private Map<String, Integer> countTagPrevTag;
+	private Map<String, Probability> countTagPrevTag;
 	private Map<String, Probability> countTagPrevTagOriginal;
 	private Map<String, Probability> countTagPrevTagNew;
 	/**
@@ -232,7 +253,7 @@ public class TagDict {
 	 * This table stores as keys the integer keys for 'tag t-1' 
 	 * and as values the number of times we observed the first tag to follow the second.
 	 */
-	private Map<String, Integer> countPrevTag;
+	private Map<String, Probability> countPrevTag;
 	private Map<String, Probability> countPrevTagOriginal;
 	private Map<String, Probability> countPrevTagNew;
 	/**
@@ -245,7 +266,7 @@ public class TagDict {
 	 * 
 	 * Stores number of word tag tokens
 	 */
-	private int numberWordTagTokens;
+	private double numberWordTagTokens;
 	private double numberWordTagTokensOriginal;
 	private double numberWordTagTokensNew;
 	/**
@@ -260,7 +281,7 @@ public class TagDict {
 	 * This table stores as keys the integer keys for 'word t, tag t' 
 	 * and as values the number of times we observed the word to receive the tag.
 	 */
-	private Map<String, Integer> countWordTag;
+	private Map<String, Probability> countWordTag;
 	private Map<String, Probability> countWordTagOriginal;
 	private Map<String, Probability> countWordTagNew;
 	/**
@@ -272,7 +293,7 @@ public class TagDict {
 	 * This table stores as keys the integer keys for 'word t' 
 	 * and as values the number of times we observed the word.
 	 */
-	private Map<String, Integer> countWord;
+	private Map<String, Probability> countWord;
 	private Map<String, Probability> countWordOriginal;
 	private Map<String, Probability> countWordNew;
 	/**
@@ -298,21 +319,21 @@ public class TagDict {
 		numberTagTokens = 0;
 		numberTagTokensOriginal = 0;
 		numberTagTokensNew = 0;
-		countTagPrevTag = new HashMap<String, Integer>();
+		countTagPrevTag = new HashMap<String, Probability>();
 		countTagPrevTagOriginal = new HashMap<String, Probability>();
 		countTagPrevTagNew = new HashMap<String, Probability>();
 		countSingletonTagPrevTag = new HashMap<String, Integer>();
 		countSingletonWordTags = new HashMap<String, Integer>();
-		countPrevTag = new HashMap<String, Integer>();
+		countPrevTag = new HashMap<String, Probability>();
 		countPrevTagOriginal = new HashMap<String, Probability>();
 		countPrevTagNew = new HashMap<String, Probability>();
 		numberWordTagTokens = 0;
 		numberWordTagTokensOriginal = 0;
 		numberWordTagTokensNew = 0;
-		countWordTag = new HashMap<String, Integer>();
+		countWordTag = new HashMap<String, Probability>();
 		countWordTagOriginal = new HashMap<String, Probability>();
 		countWordTagNew = new HashMap<String, Probability>();
-		countWord = new HashMap<String, Integer>();
+		countWord = new HashMap<String, Probability>();
 		countWordOriginal = new HashMap<String, Probability>();
 		countWordNew = new HashMap<String, Probability>();
 		wordTagDictionary = new HashMap<String, ArrayList<Integer> >();
@@ -322,12 +343,12 @@ public class TagDict {
 		smoother = sm;
 	}
 	
-	private int getWordCount(int word) {
+	private Probability getWordCount(int word) {
 		String key = makeKey(word);
 		if(countWord.containsKey(key)) {
 			return countWord.get(key);
 		}
-		else return 0;
+		else return Probability.ZERO;
 	}
 	/**
 	 * Adds a tag to a word's dictionary of possible tags.
@@ -351,7 +372,7 @@ public class TagDict {
 	public void incrementCountOfWord(String word) {
 		initWordCounter(word);
 		String key = makeKey(getKeyFromWord(word));
-		countWord.put(key, countWord.get(key) + 1);
+		countWord.put(key, countWord.get(key).add(Probability.ONE));
 	}
 	
 	/**
@@ -363,7 +384,7 @@ public class TagDict {
 		int w = getKeyFromWord(word);
 		String key = makeKey(w);
 		if(!countWord.containsKey(key)) { // init with 0 if necessary
-			countWord.put(key, 0);
+			countWord.put(key, Probability.ZERO);
 		}
 	}
 	/**
@@ -409,14 +430,14 @@ public class TagDict {
 	 * 
 	 * @return map of all word, tag counts
 	 */
-	public Map<String, Integer> getCountsWordTag() {
+	public Map<String, Probability> getCountsWordTag() {
 		return countWordTag;
 	}
 	/**
 	 * 
 	 * @return map of all tag, prev tag counts
 	 */
-	public Map<String, Integer> getCountsTagPrevTag() {
+	public Map<String, Probability> getCountsTagPrevTag() {
 		return countTagPrevTag;
 	}
 	/**
@@ -428,18 +449,18 @@ public class TagDict {
 	public void incrementObservedTransmissionCount(int currTag, int prevTag) {
 		String key = makeKey(currTag, prevTag);
 		if(!countTagPrevTag.containsKey(key)) {
-			countTagPrevTag.put(key, 0);
+			countTagPrevTag.put(key, Probability.ZERO);
 		}
-		countTagPrevTag.put(key, countTagPrevTag.get(key) + 1);
-		if(debugMode) System.out.printf("count(%d aka %s, %d aka %s) = %d\n", currTag, getTagFromKey(currTag), prevTag, getTagFromKey(prevTag), countTagPrevTag.get(key));
+		countTagPrevTag.put(key, countTagPrevTag.get(key).add(Probability.ONE));
+//		if(debugMode) System.out.printf("count(%d aka %s, %d aka %s) = %s\n", currTag, getTagFromKey(currTag), prevTag, getTagFromKey(prevTag), countTagPrevTag.get(key));
 		// and now check singletons
-		if(countTagPrevTag.get(key) == 1) {
-			if(debugMode) System.out.printf("increment prev tag singleton:(%s)\n",getTagFromKey(prevTag));
+		if(countTagPrevTag.get(key).equals(Probability.ONE)) {
+//			if(debugMode) System.out.printf("increment prev tag singleton:(%s)\n",getTagFromKey(prevTag));
 			// increment appropriate singleton count
 			incrementSingletonTagPrevTag(prevTag);
 		}
-		else if(countTagPrevTag.get(key) == 2) {
-			if(debugMode) System.out.printf("decrement prev tag singleton:(%s)\n",getTagFromKey(prevTag));
+		else if(countTagPrevTag.get(key).equals(Probability.TWO)) {
+//			if(debugMode) System.out.printf("decrement prev tag singleton:(%s)\n",getTagFromKey(prevTag));
 			// decrement appropriate singleton count
 			decrementSingletonTagPrevTag(prevTag);
 		}
@@ -518,33 +539,33 @@ public class TagDict {
 	 */
 	public void incrementObservedEmissionCount(int word, int tag) {
 		String key = makeKey(word, tag);
-		if(debugMode) System.out.println("incrementing emission count:"+key);
+//		if(debugMode) System.out.println("incrementing emission count:"+key);
 		if(!countWordTag.containsKey(key)) {
-			countWordTag.put(key, 0);
-			if(debugMode) System.out.printf("adding (%d = %d) aka (%s = %s) to dict\n", word, tag, getWordFromKey(word), getTagFromKey(tag));
+			countWordTag.put(key, Probability.ZERO);
+//			if(debugMode) System.out.printf("adding (%d = %d) aka (%s = %s) to dict\n", word, tag, getWordFromKey(word), getTagFromKey(tag));
 			// and add tag to list of possible tags for word
 			addPossibleTagForWord(word, tag); // add once
 			if(debugMode) {
 				List<Integer> tagsForWord = wordTagDictionary.get(makeKey(word));
-				System.out.println("tag dict now:");
-				System.out.printf("%d -> ",word);
-				System.out.println(tagsForWord.toString());
-				System.out.printf("aka:\n %s -> [", getWordFromKey(word));
-				for(int i : tagsForWord) {
-					System.out.printf("%s, ",getTagFromKey(i));
-				}
-				System.out.println("]");
+//				System.out.println("tag dict now:");
+//				System.out.printf("%d -> ",word);
+//				System.out.println(tagsForWord.toString());
+//				System.out.printf("aka:\n %s -> [", getWordFromKey(word));
+//				for(int i : tagsForWord) {
+//					System.out.printf("%s, ",getTagFromKey(i));
+//				}
+//				System.out.println("]");
 			}
 		}
-		countWordTag.put(key, countWordTag.get(key) + 1);
-		if(debugMode) System.out.printf("key:%s count(%s, %s) = %d\n", key, getWordFromKey(word), getTagFromKey(tag), countWordTag.get(key));
+		countWordTag.put(key, countWordTag.get(key).add(Probability.ONE));
+//		if(debugMode) System.out.printf("key:%s count(%s, %s) = %s\n", key, getWordFromKey(word), getTagFromKey(tag), countWordTag.get(key));
 		// and now check singletons
-		if(countWordTag.get(key) == 1) {
-			if(debugMode) System.out.printf("increment word tag singleton:(%s)\n",getTagFromKey(tag));
+		if(countWordTag.get(key).equals(Probability.ONE)) {
+//			if(debugMode) System.out.printf("increment word tag singleton:(%s)\n",getTagFromKey(tag));
 			incrementSingletonWordTags(tag);
 		}
-		else if(countWordTag.get(key) == 2) {
-			if(debugMode) System.out.printf("decrement word tag singleton:(%s)\n",getTagFromKey(tag));
+		else if(countWordTag.get(key).equals(Probability.TWO)) {
+//			if(debugMode) System.out.printf("decrement word tag singleton:(%s)\n",getTagFromKey(tag));
 			decrementSingletonWordTags(tag);
 		}
 	}
@@ -561,16 +582,28 @@ public class TagDict {
 		numberTagTokens++;
 	}
 	/**
+	 * Increments the number of word/tag tokens we've seen
+	 */
+	public void incrementNumberTaggedWordTokensNew() {
+		numberWordTagTokensNew++;
+	}
+	/**
+	 * Increments the number of tag tokens we've seen
+	 */
+	public void incrementNumberTagTokensNew() {
+		numberTagTokensNew++;
+	}
+	/**
 	 * Increments the count of this tag
 	 * @param tag
 	 */
 	public void incrementTimesSeenTagContext(int tag) {
 		String key = makeKey(tag);
 		if(!countPrevTag.containsKey(key)) {
-			countPrevTag.put(key, 0);
+			countPrevTag.put(key, Probability.ZERO);
 		}
-		countPrevTag.put(key, countPrevTag.get(key) + 1);
-		if(debugMode) System.out.printf("count(%d aka %s) = %d\n", tag, getTagFromKey(tag), countPrevTag.get(key));
+		countPrevTag.put(key, countPrevTag.get(key).add(Probability.ONE));
+//		if(debugMode) System.out.printf("count(%d aka %s) = %s\n", tag, getTagFromKey(tag), countPrevTag.get(key));
 	}
 	/**
 	 * Get the count of times the current tag was followed by the previous tag
@@ -578,11 +611,11 @@ public class TagDict {
 	 * @param prevTag
 	 * @return the count
 	 */
-	public int getTransmissionCount(int currTag, int prevTag) {
+	public Probability getTransmissionCount(int currTag, int prevTag) {
 		String key = makeKey(currTag, prevTag);
 		if(countTagPrevTag.containsKey(key))
 			return countTagPrevTag.get(makeKey(currTag, prevTag));
-		else return 0;
+		else return Probability.ZERO;
 	}
 	/**
 	 * Set the count of times the current tag was followed by the previous tag
@@ -590,7 +623,7 @@ public class TagDict {
 	 * @param prevTag
 	 * @param newCount the count
 	 */
-	public void setTransmissionCount(int currTag, int prevTag, int newCount) {
+	public void setTransmissionCount(int currTag, int prevTag, Probability newCount) {
 		String key = makeKey(currTag, prevTag);
 		if(countTagPrevTag.containsKey(key)) {
 			countTagPrevTag.put(key, newCount);
@@ -601,18 +634,18 @@ public class TagDict {
 	 * @param tag
 	 * @return the count
 	 */
-	public int getTagContextCount(int tag) {
+	public Probability getTagContextCount(int tag) {
 		if(countPrevTag.containsKey(makeKey(tag))) {
 			return countPrevTag.get(makeKey(tag));
 		}
-		else return 0;
+		else return Probability.ZERO;
 	}
 	/**
 	 * Set the count of times we observed the tag
 	 * @param tag
 	 * @param count the new count
 	 */
-	public void setTagContextCount(int tag, int newCount) {
+	public void setTagContextCount(int tag, Probability newCount) {
 		if(countPrevTag.containsKey(makeKey(tag))) {
 			countPrevTag.put(makeKey(tag), newCount);	
 		}
@@ -623,11 +656,11 @@ public class TagDict {
 	 * @param tag
 	 * @return the count
 	 */
-	public int getEmissionCount(int word, int tag) {
+	public Probability getEmissionCount(int word, int tag) {
 		String key = makeKey(word, tag);
 		if(countWordTag.containsKey(key))
 			return countWordTag.get(makeKey(word, tag));
-		else return 0;
+		else return Probability.ZERO;
 	}
 	/**
 	 * Set the count of times the word was tagged with the tag
@@ -635,7 +668,7 @@ public class TagDict {
 	 * @param tag
 	 * @param newCount
 	 */
-	public void setEmissionCount(int word, int tag, int newCount) {
+	public void setEmissionCount(int word, int tag, Probability newCount) {
 		String key = makeKey(word, tag);
 		if(countWordTag.containsKey(key)) {
 			countWordTag.put(key, newCount);
@@ -645,16 +678,48 @@ public class TagDict {
 	 * Gets the number of word/tag tokens
 	 * @return the number
 	 */
-	public int getNumberWordTagTokens() {
+	public double getNumberWordTagTokens() {
 		return numberWordTagTokens;
 	}
 	/**
 	 * Gets the number of tag tokens
 	 * @return the number
 	 */
-	public int getNumberTagTokens() {
+	public double getNumberTagTokens() {
 		return numberTagTokens;
 	}
+	public double getNumberTagTokensOriginal() {
+		return numberTagTokensOriginal;
+	}
+	public double getNumberTagTokensNew() {
+		return numberTagTokensNew;
+	}
+	public double getNumberWordTagTokensOriginal() {
+		return numberWordTagTokensOriginal;
+	}
+	public double getNumberWordTagTokensNew() {
+		return numberWordTagTokensNew;
+	}
+	
+	public void setNumberTagTokens(double d) {
+		numberTagTokens = d;
+	}
+	public void setNumberTagTokensOriginal(double  d) {
+		numberTagTokensOriginal = d;
+	}
+	public void setNumberTagTokensNew(double  d) {
+		numberTagTokensNew = d;
+	}
+	public void setNumberWordTagTokens(double d) {
+		numberWordTagTokens = d;
+	}
+	public void setNumberWordTagTokensOriginal(double  d) {
+		numberWordTagTokensOriginal = d;
+	}
+	public void setNumberWordTagTokensNew(double  d) {
+		numberWordTagTokensNew = d;
+	}
+	
 	/**
 	 * 
 	 * @param word
@@ -681,33 +746,33 @@ public class TagDict {
 	 */
 	public Probability getSmoothedProbTagGivenPrevTag(int tag, int prevTag) {
 		if(smoother.equals(SMOOTHING.oneCountSmoothing)) {
-			if(debugMode) System.out.printf("\nbackoff prob tag prev tag\np(%s | %s)\n", getTagFromKey(tag), getTagFromKey(prevTag));
+			if(debugMode) System.out.printf("backoff prob tag prev tag\np(%s | %s)\n", getTagFromKey(tag), getTagFromKey(prevTag));
 			// really small number for lambda -> 1e-100, or 1
 //			Probability lambda = new Probability(0);
 			Probability lambda = new Probability(Math.pow(10, -100));
 //			Probability lambda = new Probability(1);
-			if(debugMode) System.out.println("lambda:"+lambda);
+//			if(debugMode) System.out.println("lambda:"+lambda);
 			// lambda = count of singletons of prev tag
-			if(debugMode) System.out.printf("singleton tag count for %s:%s\n", getTagFromKey(prevTag), getSingletonTagPrevTagCount(prevTag));
+//			if(debugMode) System.out.printf("singleton tag count for %s:%s\n", getTagFromKey(prevTag), getSingletonTagPrevTagCount(prevTag));
 			lambda = lambda.add(new Probability(getSingletonTagPrevTagCount(prevTag)));
-			if(debugMode) System.out.println("lambda = lambda + singleton count\nlambda:"+lambda);
+//			if(debugMode) System.out.println("lambda = lambda + singleton count\nlambda:"+lambda);
 			// p backoff = p unsmoothed = (count (tag)) / (n)
 			Probability n = new Probability(numberTagTokens);
 //			Probability n = new Probability(numberTagTokens - 1);
 			Probability pttBackoff = new Probability(getTagContextCount(tag));
-			if(debugMode) System.out.printf("count(%s):%s\n",getTagFromKey(tag), pttBackoff);
-			if(debugMode) System.out.printf("n:%s\n",n);
+//			if(debugMode) System.out.printf("count(%s):%s\n",getTagFromKey(tag), pttBackoff);
+//			if(debugMode) System.out.printf("n:%s\n",n);
 			pttBackoff = pttBackoff.divide(n);
-			if(debugMode) System.out.printf("pttbackoff:%s\n", pttBackoff);
+//			if(debugMode) System.out.printf("pttbackoff:%s\n", pttBackoff);
 			// p = (count(tag, prevtag) + lambda * pttbackoff) / (count(prevtag) + lambda)
 			Probability numerator = lambda.product(pttBackoff);
-			if(debugMode) System.out.println("lambda * backoff:"+numerator);
-			if(debugMode) System.out.println("c(tag,prevtag):"+new Probability(getTransmissionCount(tag, prevTag)));
+//			if(debugMode) System.out.println("lambda * backoff:"+numerator);
+//			if(debugMode) System.out.println("c(tag,prevtag):"+new Probability(getTransmissionCount(tag, prevTag)));
 			numerator = numerator.add(new Probability(getTransmissionCount(tag, prevTag)));
-			if(debugMode) System.out.println("c(tag,prevtag) + lambda * backoff:"+numerator);
+//			if(debugMode) System.out.println("c(tag,prevtag) + lambda * backoff:"+numerator);
 			Probability denominator = lambda.add(new Probability(getTagContextCount(prevTag)));
-			if(debugMode) System.out.println("lambda + count(prevTag):"+denominator);
-			if(debugMode) System.out.println("p(backoff) = "+numerator.divide(denominator));
+//			if(debugMode) System.out.println("lambda + count(prevTag):"+denominator);
+			if(debugMode) System.out.println(" = "+numerator.divide(denominator));
 			return numerator.divide(denominator);
 		}
 		else {
@@ -725,42 +790,42 @@ public class TagDict {
 	 */
 	public Probability getSmoothedProbWordGivenTag(int word, int tag) {
 		if(smoother.equals(SMOOTHING.oneCountSmoothing)) {
-			if(debugMode) System.out.printf("\nbackoff prob word given tag\np(%s | %s)\n", getWordFromKey(word), getTagFromKey(tag));
+			if(debugMode) System.out.printf("backoff prob word given tag\np(%s | %s)\n", getWordFromKey(word), getTagFromKey(tag));
 			// really small number for lambda -> 1e-100, or 1
 //			Probability lambda = new Probability(0);
 			Probability lambda = new Probability(Math.pow(10, -100));
 //			Probability lambda = new Probability(1);
-			if(debugMode) System.out.println("lambda:"+lambda);
+//			if(debugMode) System.out.println("lambda:"+lambda);
 			// lambda = singleton count - backoff proportional to the open-ness of a tag class
-			if(debugMode) System.out.printf("singleton word count for %s:%s\n", getTagFromKey(tag), new Probability(getSingletonWordTagCount(tag)));
+//			if(debugMode) System.out.printf("singleton word count for %s:%s\n", getTagFromKey(tag), new Probability(getSingletonWordTagCount(tag)));
 			lambda = lambda.add(new Probability(getSingletonWordTagCount(tag)));
-			if(debugMode) System.out.println("lambda = lambda + singleton count\nlambda:"+lambda);
+//			if(debugMode) System.out.println("lambda = lambda + singleton count\nlambda:"+lambda);
 			if(tag == getKeyFromTag(SENTENCE_BOUNDARY)) {
-				if(debugMode) System.out.println("but set lambda = 0 if "+SENTENCE_BOUNDARY);
+//				if(debugMode) System.out.println("but set lambda = 0 if "+SENTENCE_BOUNDARY);
 				// force lambda to be 0 if ### so we never smooth
 				lambda = new Probability(0);
 			}
 			// we assume we always will have observed the tag set. this will never return null
 			// p backoff = p unsmoothed = (count (word) + 1) / (n + V)
 			// n = number tag tokens in training
-			int n = numberTagTokens;
+			double n = numberTagTokens;
 //			int n = numberTagTokens - 1;
-			Probability ptwBackoff = new Probability( getWordCount(word)+1 );
-			if(debugMode) System.out.printf("count(%s):%s\n",getWordFromKey(word), ptwBackoff);
-			if(debugMode) System.out.printf("n:%d V:%d n+V:%d\n",n, getVocabSize(), n+getVocabSize());
+			Probability ptwBackoff = new Probability( getWordCount(word).add(Probability.ONE) );
+//			if(debugMode) System.out.printf("count(%s):%s\n",getWordFromKey(word), ptwBackoff);
+//			if(debugMode) System.out.printf("n:%.1f V:%d n+V:%.1f\n",n, getVocabSize(), n+getVocabSize());
 			ptwBackoff = ptwBackoff.divide(new Probability(n + getVocabSize()));
-			if(debugMode) System.out.printf("ptw backoff:%s\n", ptwBackoff);
+//			if(debugMode) System.out.printf("ptw backoff:%s\n", ptwBackoff);
 			// now we have:
 			// (count(word, tag) + lambda * pttbackoff) / (count(tag) + lambda)
 			Probability numerator = lambda.product(ptwBackoff);
-			if(debugMode) System.out.println("lambda times backoff:"+numerator);
-			if(debugMode) System.out.println("c(word,tag):"+new Probability(getEmissionCount(word, tag)));
+//			if(debugMode) System.out.println("lambda times backoff:"+numerator);
+//			if(debugMode) System.out.println("c(word,tag):"+new Probability(getEmissionCount(word, tag)));
 			numerator = numerator.add(new Probability(getEmissionCount(word, tag)));
-			if(debugMode) System.out.println("c(word,tag) + lambda times backoff:"+numerator);
+//			if(debugMode) System.out.println("c(word,tag) + lambda times backoff:"+numerator);
 			Probability denominator = new Probability(getTagContextCount(tag));
 			denominator = denominator.add(lambda);
-			if(debugMode) System.out.println("count(tag) + lambda:"+denominator);
-			if(debugMode) System.out.println("p(backoff) = "+numerator.divide(denominator));
+//			if(debugMode) System.out.println("count(tag) + lambda:"+denominator);
+			if(debugMode) System.out.println(" = "+numerator.divide(denominator));
 			return numerator.divide(denominator);
 		}
 		else if(smoother.equals(SMOOTHING.add1)) {
@@ -783,6 +848,12 @@ public class TagDict {
 	/**
 	 * Computes p(tag | previous tag) = the transmission probability.
 	 * Requires that we've trained so far.
+	 * 
+	 * p(tag | prev tag) = p(tag  ^ prevtag) / p(prev tag)
+	 * p(tag ^ prev tag) = transmission count (tag, prev tag) / ntagtokens
+	 * p(prev tag) = tag context count(prev tag) / ntagtokens
+	 * p(tag ^ prev tag) / p(prev tag) = transmission count (tag, prev tag) / tag context count(prev tag) 
+	 * 
 	 * @param tag
 	 * @param prevTag
 	 * @return the probability
@@ -798,6 +869,10 @@ public class TagDict {
 	/**
 	 * Computes p(word | tag) = the emission probability.
 	 * Requires that we've trained so far.
+	 * p(word|tag) = p(word ^ tag) / p(tag)
+	 * p(word ^ tag) = emission count (word,tag) / nwordtokens
+	 * p(tag) = tag context count(tag) / ntagtokens
+	 * p(word ^ tag) / p(tag) = emission count(word,tag) / tag context count(tag)
 	 * @param word
 	 * @param tag
 	 * @return the probability
@@ -843,7 +918,9 @@ public class TagDict {
 		sb.append("\n====== Number tag tokens ======\n");
 		sb.append(numberTagTokens);
 		sb.append("\n====== Global vocab size (including OOV) ======\n");
-		sb.append(getVocabSize()).append(" :: ").append(globalVocab);
+		sb.append(getGlobalVocabSize()).append(" :: ").append(globalVocab);
+		sb.append("\n====== Vocab size (including OOV) ======\n");
+		sb.append(getVocabSize()).append(" :: ").append(vocab);
 		sb.append("\n====== Word Counts ======\n");
 		for(String s : countWord.keySet()) {
 			int word = Integer.parseInt(s);
@@ -921,22 +998,57 @@ public class TagDict {
 	 * Copies the counts from our 'new' tables into the 'current' tables
 	 */
 	public void setCurrentCountsToNew() {
-		// TODO Auto-generated method stub
-		
+//		System.out.println("\n...setting current counts to new\n");
+		countPrevTag = new HashMap<String, Probability>(countPrevTagNew);
+		countTagPrevTag = new HashMap<String, Probability>(countTagPrevTagNew);
+		countWord = new HashMap<String, Probability>(countWordNew);
+		countWordTag = new HashMap<String, Probability>(countWordTagNew);
+		numberTagTokens = numberTagTokensNew;
+		numberWordTagTokens = numberWordTagTokensNew;
 	}
 	/**
 	 * Copies the counts from our 'original' tables into the 'new' tables.
 	 */
 	public void setNewCountsToOriginal() {
-		// TODO Auto-generated method stub
-		
+//		System.out.println("\n...setting new counts to original\n");
+		countPrevTagNew = new HashMap<String, Probability>(countPrevTagOriginal);
+		countTagPrevTagNew = new HashMap<String, Probability>(countTagPrevTagOriginal);
+		countWordNew = new HashMap<String, Probability>(countWordOriginal);
+		countWordTagNew = new HashMap<String, Probability>(countWordTagOriginal);
+		numberTagTokensNew = numberTagTokensOriginal;
+		numberWordTagTokensNew = numberWordTagTokensOriginal;
+	}
+	/**
+	 * Sets new counts to 0.
+	 */
+	public void setOriginalCountsToZero() {
+//		System.out.println("\n...setting new counts to 0's\n");
+		for(String k : countPrevTagOriginal.keySet()) {
+			countPrevTagOriginal.put(k, Probability.ZERO);
+		}
+		for(String k : countTagPrevTagOriginal.keySet()) {
+			countTagPrevTagOriginal.put(k, Probability.ZERO);
+		}
+		for(String k : countWordOriginal.keySet()) {
+			countWordOriginal.put(k, Probability.ZERO);
+		}
+		for(String k : countWordTagOriginal.keySet()) {
+			countWordTagOriginal.put(k, Probability.ZERO);
+		}
+		numberTagTokensOriginal = 0;
+		numberWordTagTokensOriginal = 0;
 	}
 	/**
 	 * Copies the counts from our 'current' tables into the 'original' tables
 	 */
-	public void saveCurrentCountsToOriginal() {
-		// TODO Auto-generated method stub
-		
+	public void setOriginalCountsToCurrent() {
+//		System.out.println("\n...setting original counts to current\n");
+		countPrevTagOriginal = new HashMap<String, Probability>(countPrevTag);
+		countTagPrevTagOriginal = new HashMap<String, Probability>(countTagPrevTag);
+		countWordOriginal = new HashMap<String, Probability>(countWord);
+		countWordTagOriginal = new HashMap<String, Probability>(countWordTag);
+		numberTagTokensOriginal = numberTagTokensNew;
+		numberWordTagTokensOriginal = numberWordTagTokensNew;
 	}
 	/**
 	 * Adds the probabilistic emission count specified
@@ -946,7 +1058,8 @@ public class TagDict {
 	 */
 	public void incrementNewObservedEmissionCount(int wordKey, int possibleTag,
 			Probability pUnigram) {
-		// TODO Auto-generated method stub
+//		System.out.printf("incrementing new obs emission count: -> %s,%s  c:%s\n", 
+//				getTagFromKey(possibleTag), getWordFromKey(wordKey), pUnigram);
 		String key = makeKey(wordKey, possibleTag);
 		countWordTagNew.put(key, countWordTagNew.get(key).add(pUnigram));
 		// will throw null pointer - make sure we init correctly
@@ -959,7 +1072,8 @@ public class TagDict {
 	 */
 	public void incrementNewObservedTransmissionCount(int possibleTag,
 			int prevPossibleTag, Probability pBigram) {
-		// TODO Auto-generated method stub
+//		System.out.printf("incrementing new obs transmission count: %s -> %s c:%s\n",
+//				getTagFromKey(prevPossibleTag), getTagFromKey(possibleTag), pBigram);
 		String key = makeKey(possibleTag, prevPossibleTag);
 		countTagPrevTagNew.put(key, countTagPrevTagNew.get(key).add(pBigram));
 		// will throw null pointer - make sure we init correctly
@@ -971,8 +1085,9 @@ public class TagDict {
 	 * @param current
 	 */
 	public void incrementNewTimesSeenTagContext(int prevPossibleTag, Probability current) {
-		// TODO Auto-generated method stub
 		String key = makeKey(prevPossibleTag);
+//		System.out.printf("incrementing new tag context count: -> %s c:%s\n", 
+//				getTagFromKey(prevPossibleTag), current);
 		countPrevTagNew.put(key, countPrevTagNew.get(key).add(current));
 		// will throw null pointer - make sure we init correctly
 	}
@@ -982,9 +1097,31 @@ public class TagDict {
 	 * @param word
 	 */
 	public void incrementNewCountOfWord(String word) {
-		// TODO Auto-generated method stub
 		String key = makeKey(getKeyFromWord(word));
+//		System.out.printf("incrementing new word count: word:%s c:%s\n", 
+//				word, Probability.ONE);
 		countWordNew.put(key, countWordNew.get(key).add(new Probability(1)));
 		// will throw null pointer - make sure we init correctly
+	}
+	public void printOriginalCounts() {
+		System.out.println("\n==== Original Counts ====\n");
+		System.out.println(countPrevTagOriginal);
+		System.out.println(countTagPrevTagOriginal);
+		System.out.println(countWordOriginal);
+		System.out.println(countWordTagOriginal);
+	}
+	public void printCurrentCounts() {
+		System.out.println("\n==== Current Counts ====\n");
+		System.out.println(countPrevTag);
+		System.out.println(countTagPrevTag);
+		System.out.println(countWord);
+		System.out.println(countWordTag);
+	}
+	public void printNewCounts() {
+		System.out.println("\n==== New Counts ====\n");
+		System.out.println(countPrevTagNew);
+		System.out.println(countTagPrevTagNew);
+		System.out.println(countWordNew);
+		System.out.println(countWordTagNew);
 	}
 }
