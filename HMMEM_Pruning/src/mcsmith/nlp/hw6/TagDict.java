@@ -176,9 +176,12 @@ public class TagDict {
 	/**
 	 * Given a key, get the word string
 	 * @param key
-	 * @return the word or null if not in dict
+	 * @return the word or -1 if not in dict
 	 */
 	public static int getKeyFromTag(String tag) {
+		if(!tagsToInts.containsKey(tag)) {
+			return -1;
+		}
 		return tagsToInts.get(tag);
 	}
 
