@@ -633,32 +633,36 @@ public class ViterbiTagger {
 				knownAccuracy = totalKnownTaggedCorrectly / totalKnownWords,
 				seenAccuracy = totalSeenTaggedCorrectly / totalSeenWords,
 				novelAccuracy = totalNovelTaggedCorrectly / totalNovelWords;
-		if(testData.size() == 0) {
-			overallAccuracy = 0;
+		String overallAccuracyS = String.format("%.2f%%", overallAccuracy * 100), 
+				knownAccuracyS = String.format("%.2f%%", knownAccuracy * 100),
+				seenAccuracyS = String.format("%.2f%%", seenAccuracy * 100),
+				novelAccuracyS = String.format("%.2f%%", novelAccuracy * 100);
+		if(overallAccuracy == Double.NaN) {
+			overallAccuracyS = "N/A";
 		}
-		if(totalKnownWords == 0) {
-			knownAccuracy = 0;
+		if(knownAccuracy == Double.NaN) {
+			knownAccuracyS = "N/A";
 		}
-		if(totalSeenWords == 0) {
-			seenAccuracy = 0;
+		if(seenAccuracy == Double.NaN) {
+			seenAccuracyS = "N/A";
 		}
-		if(totalNovelWords == 0) {
-			novelAccuracy = 0;
+		if(novelAccuracy == Double.NaN) {
+			novelAccuracyS = "N/A";
 		}
 		String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);
 		Probability finalProb = forwardValues.get(endKey);
 		// and print
 		if(!useSumProduct) {
-			System.out.printf("Tagging accuracy (Viterbi decoding): %.2f%% " +
-					"(known: %.2f%% seen: %.2f%% novel: %.2f%%)\n" +
-					"Perplexity per Viterbi-tagged test word: %.3f\n",
-					overallAccuracy * 100, knownAccuracy * 100, seenAccuracy * 100, novelAccuracy * 100, 
+			System.out.printf("Tagging accuracy (Viterbi decoding): %s " +
+					"(known: %s seen: %s novel: %s)\n" +
+					"Perplexity per Viterbi-tagged test word: %s\n",
+					overallAccuracyS, knownAccuracyS, seenAccuracyS, novelAccuracyS, 
 					getPerplexityPerTaggedWord(finalProb, n));
 		}
 		else {
-			System.out.printf("Tagging accuracy (posterior decoding): %.2f%% " +
-					"(known: %.2f%% seen: %.2f%% novel: %.2f%%)\n",
-					overallAccuracy * 100, knownAccuracy * 100, seenAccuracy * 100, novelAccuracy * 100);
+			System.out.printf("Tagging accuracy (posterior decoding): %s " +
+					"(known: %s seen: %s novel: %s)\n",
+					overallAccuracyS, knownAccuracyS, seenAccuracyS, novelAccuracyS);
 		}
 		
 		return result;
