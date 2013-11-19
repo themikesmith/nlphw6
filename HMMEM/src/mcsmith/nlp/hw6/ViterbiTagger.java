@@ -136,7 +136,10 @@ public class ViterbiTagger {
 				throw new IOException("error! unable to parse line:" + line);
 			}
 			// process line. - increase vocab size if necessary
-			String word = wordTag[0];
+			String word = wordTag[0], tag = wordTag[1];
+//			if(debugMode) System.out.println(": "+line);
+			// ensure we have these in our tag dictionary
+			TagDict.addTagToDict(tag);
 			TagDict.addWordToDict(word, true);
 			td.initWordCounter(word);
 			// read test data into memory
