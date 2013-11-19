@@ -388,6 +388,13 @@ public class ViterbiTagger {
 			// for each possible tag of this datum, we have one state.
 			for(int possibleTag : tdTrain.getTagDictForWord(wordKey)) {
 				String currentKey = TagDict.makeKey(possibleTag, i);
+				Probability currentAlpha = stateValues.get(currentKey);
+				if(currentAlpha == null) currentAlpha = Probability.ZERO;
+				Probability threshold = SUPER_AGGRESSIVE_THRESHOLD;
+				if(!pruningLevel) threshold = AGGRESSIVE_THRESHOLD;
+				if(currentAlpha.getLogProb() < threshold.getLogProb()) {
+					continue; // prune
+				}
 				// for each possible tag of the previous datum...
 				for(int prevPossibleTag : tdTrain.getTagDictForWord(prevWordKey)) {
 					// p = arc prob = p(tag | prev tag) * p(word | tag)
@@ -402,8 +409,6 @@ public class ViterbiTagger {
 						Probability prevAlpha = stateValues.get(prevKey);
 						if(prevAlpha == null) prevAlpha = Probability.ZERO;
 						Probability summand = prevAlpha.product(arcProb);
-						// get current value
-						Probability currentAlpha = stateValues.get(currentKey);
 						if(currentAlpha == null) currentAlpha = Probability.ZERO;
 						// and add values
 						stateValues.put(currentKey, currentAlpha.add(summand));
@@ -415,15 +420,8 @@ public class ViterbiTagger {
 						Probability prevBest = stateValues.get(prevKey);
 						if(prevBest == null) prevBest = Probability.ZERO;
 						Probability mu = prevBest.product(arcProb);
-						// get current best and compare
-						Probability currentBest = stateValues.get(currentKey);
-						if(currentBest == null) currentBest = Probability.ZERO;
-						// prune?
-						Probability threshold = SUPER_AGGRESSIVE_THRESHOLD;
-						if(!pruningLevel) threshold = AGGRESSIVE_THRESHOLD;
-//						if(mu.getLogProb() >= threshold.getLogProb()) 
-//							System.out.println(mu);
-						if(mu.getLogProb() >= currentBest.getLogProb()
+						// compare with current best
+						if(mu.getLogProb() >= currentAlpha.getLogProb()
 								&& mu.getLogProb() >= threshold.getLogProb()) {
 							// we have a new max!
 							stateValues.put(currentKey, mu);
