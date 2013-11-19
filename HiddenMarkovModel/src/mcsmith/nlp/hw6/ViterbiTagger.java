@@ -85,7 +85,7 @@ public class ViterbiTagger {
 //			if(debugMode) System.out.println(": "+line);
 			// ensure we have these in our tag dictionary
 			TagDict.addTagToDict(tag);
-			TagDict.addWordToDict(word);
+			TagDict.addWordToDict(word, false);
 			// and increment the appropriate counts
 			int tagKey = TagDict.getKeyFromTag(tag), wordKey = TagDict.getKeyFromWord(word);
 //			if(debugMode) System.out.printf("word:%s tag:%s prevTag:%s\n", word, tag, TagDict.getTagFromKey(prevTagKey));
@@ -125,7 +125,7 @@ public class ViterbiTagger {
 			// process line. - increase vocab size if necessary
 			String word = wordTag[0];
 			if (debugMode) System.out.println(": " + line);
-			TagDict.addWordToDict(word);
+			TagDict.addWordToDict(word, true);
 			td.initWordCounter(word);
 			// read test data into memory
 			testData.add(line);
@@ -415,7 +415,6 @@ public class ViterbiTagger {
 		// init count of correct tags (note we know the number of total tags is N)
 		double totalWords = 0, totalCorrectTags = 0, 
 				totalKnownWords = 0, totalKnownTaggedCorrectly = 0,
-				totalSeenWords = 0, totalSeenTaggedCorrectly = 0,
 				totalNovelWords = 0, totalNovelTaggedCorrectly = 0;
 		// declare array and follow back pointers
 		int[] result = new int[testData.size()];
@@ -452,13 +451,6 @@ public class ViterbiTagger {
 						totalKnownTaggedCorrectly++;
 					}
 				}
-				else if(tdRaw.seenWord(datum[0])) {
-					// seen
-					totalSeenWords++;
-					if(obsPrevTag == prevTag) {
-						totalSeenTaggedCorrectly++;
-					}
-				}
 				else {
 					// novel
 					totalNovelWords++;
@@ -475,8 +467,6 @@ public class ViterbiTagger {
 			System.out.println("overall correct:"+totalCorrectTags);
 			System.out.println("known correct:"+totalKnownTaggedCorrectly);
 			System.out.println("num known words:"+totalKnownWords);
-			System.out.println("seen correct:"+totalSeenTaggedCorrectly);
-			System.out.println("num seen words:"+totalSeenWords);
 			System.out.println("novel correct:"+totalNovelTaggedCorrectly);
 			System.out.println("num novel words:"+totalNovelWords);
 		}
@@ -484,34 +474,33 @@ public class ViterbiTagger {
 		// don't count the sentence boundaries when we score
 		double overallAccuracy = totalCorrectTags / totalWords, 
 				knownAccuracy = totalKnownTaggedCorrectly / totalKnownWords,
-				seenAccuracy = totalSeenTaggedCorrectly / totalSeenWords,
 				novelAccuracy = totalNovelTaggedCorrectly / totalNovelWords;
+		String overallAccuracyS = String.format("%.2f%%", overallAccuracy * 100), 
+				knownAccuracyS = String.format("%.2f%%", knownAccuracy * 100),
+				novelAccuracyS = String.format("%.2f%%", novelAccuracy * 100);
 		if(testData.size() == 0) {
-			overallAccuracy = 0;
+			overallAccuracyS = "N/A";
 		}
 		if(totalKnownWords == 0) {
-			knownAccuracy = 0;
-		}
-		if(totalSeenWords == 0) {
-			seenAccuracy = 0;
+			knownAccuracyS = "N/A";
 		}
 		if(totalNovelWords == 0) {
-			novelAccuracy = 0;
+			novelAccuracyS = "N/A";
 		}
 		String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), testData.size()-1);
 		Probability finalProb = forwardValues.get(endKey);
 		// and print
 		if(!useSumProduct) {
-			System.out.printf("Tagging accuracy (Viterbi decoding): %.2f%% " +
-					"(known: %.2f%% seen: %.2f%% novel: %.2f%%)\n" +
-					"Perplexity per Viterbi-tagged test word: %.3f\n",
-					overallAccuracy * 100, knownAccuracy * 100, seenAccuracy * 100, novelAccuracy * 100, 
+			System.out.printf("Tagging accuracy (Viterbi decoding): %s " +
+					"(known: %s novel: %s)\n" +
+					"Perplexity per Viterbi-tagged test word: %s\n",
+					overallAccuracyS, knownAccuracyS, novelAccuracyS, 
 					getPerplexityPerTaggedWord(finalProb, n));
 		}
 		else {
-			System.out.printf("Tagging accuracy (posterior decoding): %.2f%% " +
-					"(known: %.2f%% seen: %.2f%% novel: %.2f%%)\n",
-					overallAccuracy * 100, knownAccuracy * 100, seenAccuracy * 100, novelAccuracy * 100);
+			System.out.printf("Tagging accuracy (posterior decoding): %s " +
+					"(known: %s novel: %s)\n",
+					overallAccuracyS, knownAccuracyS, novelAccuracyS);
 		}
 		
 		return result;
@@ -526,18 +515,8 @@ public class ViterbiTagger {
 	 */
 	private double getPerplexityPerTaggedWord(Probability prob, double n) {
 		if(debugMode) System.out.println("prob of sequence:"+prob);
-		if(debugMode) System.out.println("logprob of sequence:"+prob.getLogProb());
+//		if(debugMode) System.out.println("logprob of sequence:"+prob.getLogProb());
 		if(debugMode) System.out.println("n:"+n);
-//		double d = Math.exp(prob.getLogProb() / (-1* (n+2)));
-//		System.out.println("perp:"+d);
-//		d = Math.exp(prob.getLogProb() / (-1* (n+1)));
-//		System.out.println("perp:"+d);
-//		d = Math.exp(prob.getLogProb() / (-1* n));
-//		System.out.println("perp:"+d);
-//		d = Math.exp(prob.getLogProb() / (-1* (n-1)));
-//		System.out.println("perp:"+d);
-//		d = Math.exp(prob.getLogProb() / (-1* (n-2)));
-//		System.out.println("perp:"+d);
 		return Math.exp(prob.getLogProb() / (-1* n));
 	}
 	public TagDict getTagDict() {return tdTrain;}

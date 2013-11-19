@@ -27,15 +27,30 @@ public class TagDict {
 	 * This table stores as keys the plain strings
 	 */
 	private static Set<String> globalVocab = new HashSet<String>();
+	/**
+	 * Table used to store the global vocab.
+	 * this is the training and test and raw vocab.
+	 * 
+	 * This table stores as keys the plain strings
+	 */
+	private static Set<String> vocab = new HashSet<String>();
 	static {
 		globalVocab.add(OOV);
+		vocab.add(OOV);
+	}
+	/**
+	 * 
+	 * @return the size of the global vocab
+	 */
+	public static int getGlobalVocabSize() {
+		return globalVocab.size();
 	}
 	/**
 	 * 
 	 * @return the size of the global vocab
 	 */
 	public static int getVocabSize() {
-		return globalVocab.size();
+		return vocab.size();
 	}
 	/**
 	 * Table for going from words to integer keys.
@@ -58,19 +73,25 @@ public class TagDict {
 	 * Checks for duplicates - will not add a duplicate.
 	 * Stores it in the words to ints, and ints to words tables.
 	 * Increments the next integer to be used as a converter key.
+	 * If the word is not in test data, increment our vocab size for calculations.
 	 * @param word
+	 * @param inTestData
 	 * @return true if changes made, false otherwise
 	 */
-	public static boolean addWordToDict(String word) {
+	public static boolean addWordToDict(String word, boolean inTestData) {
 		if(!wordsToInts.containsKey(word)) {
 			int number = wordsToInts.keySet().size();
 			wordsToInts.put(word, number);
 			intsToWords.put(number, word);
-			if(debugMode) System.out.printf("adding word %d:'%s'\n", number, word);
-			if(debugMode) System.out.printf("num words now:%d\n", intsToWords.keySet().size());
-			if(debugMode) System.out.printf("words now:%s\n", intsToWords);
-			if(debugMode) System.out.printf("ints now:%s\n", wordsToInts);
+			if(debugMode) System.out.printf("adding word to global vocab %d:'%s'\n", number, word);
+//			if(debugMode) System.out.printf("num words now:%d\n", intsToWords.keySet().size());
+//			if(debugMode) System.out.printf("words now:%s\n", intsToWords);
+//			if(debugMode) System.out.printf("ints now:%s\n", wordsToInts);
 			globalVocab.add(word);
+			if(!inTestData) {
+				vocab.add(word);
+				if(debugMode) System.out.printf("adding word to vocab %d:'%s'\n", number, word);
+			}
 			return true;
 		}
 		return false;
