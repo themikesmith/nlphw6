@@ -469,7 +469,7 @@ public class ViterbiTagger {
 				tdTrain.incrementNewObservedEmissionCount(wordKey, possibleTag, pUnigram);
 				
 				// max probability we've found
-				Probability maxProbFound = new Probability(0);
+				Probability maxProbFound = Probability.ZERO;
 				// and prev tag that produced it
 				int bestPrevTag = -1;
 				// for each possible tag of the previous datum...
@@ -504,16 +504,8 @@ public class ViterbiTagger {
 						Probability pBigram = prevAlpha.product(arcProb).product(betaTI).divide(S);
 						// update count of transmission from poss tag to prev poss tag
 						// p = arc prob = p(tag | prev tag) * p(word | tag)
-						// alpha(prev tag) * p(tag | prev tag) * beta(tag) * p(word | tag) / S 
-						try {
-							tdTrain.incrementNewObservedTransmissionCount(possibleTag, prevPossibleTag, pBigram);
-						}
-						catch(NullPointerException ex) {
-							System.err.printf("uh oh! transmission count not initalized for:%s->%s\n",
-									TagDict.getTagFromKey(possibleTag), TagDict.getTagFromKey(prevPossibleTag));
-							throw ex;
-						}
-						
+						// alpha(prev tag) * p(tag | prev tag) * beta(tag) * p(word | tag) / S
+						tdTrain.incrementNewObservedTransmissionCount(possibleTag, prevPossibleTag, pBigram);
 						// ..to get this we divide pbigram / punigram
 						Probability current = pBigram.divide(pUnigram);
 						// track result with backpointers
@@ -533,8 +525,8 @@ public class ViterbiTagger {
 					}
 				}
 				if(bestPrevTag == -1) {
-					System.err.println("\nnever assigned a best!\n");
-					System.out.println("\nnever assigned a best\n");
+//					System.err.println("\nnever assigned a best!\n");
+//					System.out.println("\nnever assigned a best\n");
 				}
 				backpointers.put(currentKey, bestPrevTag);
 			}
