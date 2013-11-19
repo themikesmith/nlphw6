@@ -51,7 +51,7 @@ public class VTag {
 			// run viterbi on test data
 			vtag.test(false);
 			// for this many iterations....
-			int maxIterations = 10;
+			int maxIterations = 11;
 			for(int i = 0; i < maxIterations; i++) {
 				System.out.printf("\nIteration %d: ",i);
 				// then, using raw data, re-estimate training counts with forward backward EM
@@ -60,7 +60,7 @@ public class VTag {
 				double accuracy = vtag.test(false);
 				if(accuracy == 1) {
 					// stop prematurely.
-					break;
+//					break;
 				}
 			}
 		} catch (IOException e) {
