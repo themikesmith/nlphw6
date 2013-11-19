@@ -11,8 +11,8 @@ import java.util.Map;
 
 public class ViterbiTagger {
 	public static final String WORD_TAG_DELIMITER = "/";
-	public static final Probability SUPER_AGGRESSIVE_THRESHOLD = new Probability(Math.pow(10, -100));
-	public static final Probability AGGRESSIVE_THRESHOLD = new Probability(Math.pow(10, -50));
+	public static final Probability SUPER_AGGRESSIVE_THRESHOLD = new Probability(Math.pow(10, -1000));
+	public static final Probability AGGRESSIVE_THRESHOLD = new Probability(Math.pow(10, -2000));
 	private boolean debugMode;
 	/**
 	 * Stores our training data
@@ -418,8 +418,11 @@ public class ViterbiTagger {
 						// get current best and compare
 						Probability currentBest = stateValues.get(currentKey);
 						if(currentBest == null) currentBest = Probability.ZERO;
+						// prune?
 						Probability threshold = SUPER_AGGRESSIVE_THRESHOLD;
 						if(!pruningLevel) threshold = AGGRESSIVE_THRESHOLD;
+//						if(mu.getLogProb() >= threshold.getLogProb()) 
+//							System.out.println(mu);
 						if(mu.getLogProb() >= currentBest.getLogProb()
 								&& mu.getLogProb() >= threshold.getLogProb()) {
 							// we have a new max!
@@ -455,6 +458,7 @@ public class ViterbiTagger {
 			tdTrain.incrementNewCountOfWord(word);
 			tdTrain.incrementNumberTaggedWordTokensNew();
 			tdTrain.incrementNumberTagTokensNew();
+			
 			// for each possible tag of this datum, we have one state.
 			for(int possibleTag : tdTrain.getTagDictForWord(wordKey)) {
 				String currentKey = TagDict.makeKey(possibleTag, i);
@@ -464,6 +468,10 @@ public class ViterbiTagger {
 				// = alpha (t, i) * beta (t,i) / S
 				Probability alphaTI = forwardValues.get(currentKey);
 				if(alphaTI == null) alphaTI = Probability.ZERO;
+				if(alphaTI == Probability.ZERO) {
+					// prune!
+					continue;
+				}
 				Probability betaTI = backwardValues.get(currentKey);
 				String endKey = TagDict.makeKey(TagDict.getKeyFromWord(TagDict.SENTENCE_BOUNDARY), rawData.size()-1);
 				Probability S = forwardValues.get(endKey);
