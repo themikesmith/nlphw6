@@ -15,7 +15,7 @@ public class ViterbiTagger {
 	/**
 	 * Stores our training data
 	 */
-	private TagDict tdTrain, tdTest, tdRaw;
+	private TagDict tdTrain, tdTest;
 	/**
 	 * Stores our state alpha / mu values - forward pass.
 	 * 
@@ -49,7 +49,6 @@ public class ViterbiTagger {
 		forwardValues = new HashMap<String, Probability>();
 		tdTrain = new TagDict();
 		tdTest = new TagDict();
-		tdRaw = new TagDict();
 		debugMode = false;
 		backpointers = new HashMap<String, Integer>();
 		backwardValues = new HashMap<String, Probability>();
