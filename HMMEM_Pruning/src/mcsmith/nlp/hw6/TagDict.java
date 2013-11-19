@@ -738,6 +738,15 @@ public class TagDict {
 		return countWord.containsKey(makeKey(wordKey));
 	}
 	/**
+	 * 
+	 * @param word
+	 * @return true if this tag dict has seen the word, else false
+	 */
+	public boolean seenWordOriginal(String word) {
+		int wordKey = getKeyFromWord(word);
+		return countWordOriginal.containsKey(makeKey(wordKey));
+	}
+	/**
 	 * Computes p(tag | previous tag) = the transmission probability.
 	 * Requires that we've trained.
 	 * 

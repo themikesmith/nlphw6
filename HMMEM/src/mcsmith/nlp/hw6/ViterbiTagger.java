@@ -721,7 +721,7 @@ public class ViterbiTagger {
 					totalCorrectTags++;
 				}
 				// was the word known? seen while training and while testing
-				if(tdTrain.seenWord(datum[0])) {
+				if(tdTrain.seenWordOriginal(datum[0])) {
 					// known
 					totalKnownWords++;
 					if(obsPrevTag == prevTag) {
